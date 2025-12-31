@@ -22,27 +22,14 @@ const app = express();
 // Trust proxy for Vercel deployment
 app.set('trust proxy', 1);
 
-// Get allowed origins from environment variable or use defaults for development
-const getAllowedOrigins = () => {
-  const envOrigins = process.env.FRONTEND_URL;
-
-  if (envOrigins) {
-    // Support comma-separated origins in FRONTEND_URL
-    return envOrigins.split(',').map(origin => origin.trim());
-  }
-
-  // Default development origins (fallback only)
-  if (process.env.NODE_ENV !== 'production') {
-    return [
-      "http://localhost:5173",
-      "http://localhost:5174",
-    ];
-  }
-
-  return [];
-};
-
-const allowedOrigins = getAllowedOrigins();
+// Allowed origins for CORS - add your domains here
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "https://rent.sindhustudio.in",
+  "https://rent-info.vercel.app",
+];
 
 app.use(
   cors({
@@ -81,7 +68,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // "none" for cross-site cookies in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     },
   })
