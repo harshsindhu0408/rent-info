@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from "react";
-import api from "../api/axios";
+import api, { API_BASE_URL } from "../api/axios";
 
 const AuthContext = createContext();
 
@@ -13,35 +13,11 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserLoggedIn = async () => {
     try {
-      // We need a route to check session status.
-      // Since the backend doesn't explicit have /auth/me, we can try to fetch a private route or add one.
-      // OR we can rely on the fact that if we get 401 on protected routes, we trigger login.
-      // Ideally, we should add a /auth/me endpoint.
-      // For now, let's assume valid session if we can hit a protected endpoint or mock it.
-      // Wait, I should add /auth/me to backend or simple hack:
-      // Create a pseudo check.
-      // Let's assume the user is logged in if they have a cookie.
-      // But we need user details (name, role).
-      // Let's implement a quick fetch from a protected route or add /auth/me to backend later if needed.
-      // I'll assume we can use a simple GET request to a user endpoint if available.
-      // Wait, I didn't add /auth/me. I should add it.
-
-      // Temporary Plan: Try to get cars. If 401, not logged in.
-      // But that's public.
-      // I will add a backend endpoint /auth/me via the frontend by editing backend? No, I should stick to provided backend.
-      // I can't easily edit backend now without switching context too much.
-      // Wait, I can just use the provided passport session.
-      // The prompt says "GET /auth/google".
-      // I'll try to add a fetch to a known protected route.
-      // Actually, I can use a hack: modify backend slightly or just assume if I can't fetch rentals I'm not admin.
-
-      // Better approach: I will add `update backend` tasks if I must.
-      // But let's check standard passport pattern. Usually you need an endpoint to return req.user.
-      // I WILL ADD /auth/me to backend. It is necessary for specific "Role" based UI.
-
-      const res = await api.get("/auth/me"); // I will implement this in backend shortly.
+      const res = await api.get("/auth/me");
       setUser(res.data);
     } catch (error) {
+      // If 401/403, the interceptor handles redirect
+      // Just clear user state for other errors
       setUser(null);
     } finally {
       setLoading(false);
@@ -49,20 +25,31 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = () => {
-    window.location.href = "http://localhost:8000/auth/google";
+    // Use the exported API_BASE_URL from axios config
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   const logout = async () => {
     try {
       await api.get("/auth/logout");
       setUser(null);
+      // Redirect to login after logout
+      window.location.href = '/login';
     } catch (error) {
-      console.error(error);
+      console.error("Logout error:", error);
+      // Still clear user and redirect on error
+      setUser(null);
+      window.location.href = '/login';
     }
   };
 
+  // Function to clear user state (can be called from interceptor)
+  const clearUser = () => {
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, clearUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 // @access  Private/Admin
 export const getRentalReports = async (req, res) => {
   try {
-    const { carId, month, startDate, endDate } = req.query;
+    const { carId, month, startDate, endDate, includeActive } = req.query;
 
     const matchStage = {};
 
@@ -15,62 +15,54 @@ export const getRentalReports = async (req, res) => {
       matchStage.car = new mongoose.Types.ObjectId(carId);
     }
 
-    // Filter by Date Range (startDate to endDate)
-    // IMPORTANT: Users want to see reports based on when money is COLLECTED (End Time), not Start Time.
-    // Also, Active rentals (no End Time) should not be counted in revenue yet.
+    // Filter by Date Range
     if (startDate && endDate) {
-      matchStage.endTime = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
+      if (includeActive === 'true') {
+        matchStage.startTime = {
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+        };
+      } else {
+        matchStage.endTime = {
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+        };
+      }
     }
 
-    // Filter by Month (e.g., month=2023-12)
-    if (month) {
+    // Filter by Month
+    if (month && !startDate && !endDate) {
       const date = new Date(month);
       const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const endOfMonth = new Date(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        0,
-        23,
-        59,
-        59
-      );
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 
-      matchStage.endTime = {
-        $gte: startOfMonth,
-        $lte: endOfMonth,
-      };
+      if (includeActive === 'true') {
+        matchStage.startTime = { $gte: startOfMonth, $lte: endOfMonth };
+      } else {
+        matchStage.endTime = { $gte: startOfMonth, $lte: endOfMonth };
+      }
     }
 
-    // Ensure we only look at COMPLETED rentals or at least those with an End Time
-    // because "Active" rentals haven't collected money yet (technically).
-    // The matchStage.endTime range checks implicitly filter out nulls, but if no date filter is applied,
-    // we should still exclude active ones if we want "Revenue".
-    // However, if the user just hits "Rentals", maybe they want to see all?
-    // But this is "Reports". Usually revenue reports implies finalized money.
-    // Let's enforce endTime exists.
-    if (!matchStage.endTime) {
+    // If no date filter and not including active, require endTime
+    if (!matchStage.endTime && !matchStage.startTime && includeActive !== 'true') {
       matchStage.endTime = { $ne: null };
     }
 
-    // If both month and dateRange provided, dateRange takes precedence or combine intersection?
-    // Usually assume one or the other. Code above overrides if month comes after dateRange.
-    // I should check if matchStage.startTime is already set.
-    // But for simplicity, let's assume valid usage.
-
+    // Optimized pipeline - uses indexes on car, status, endTime, startTime
     const pipeline = [
       { $match: matchStage },
       {
         $facet: {
           rentals: [
+            { $sort: { startTime: -1 } }, // Uses startTime index
+            { $limit: 100 }, // Limit for performance
             {
               $lookup: {
                 from: "cars",
                 localField: "car",
                 foreignField: "_id",
                 as: "car",
+                pipeline: [{ $project: { brand: 1, model: 1, plateNumber: 1 } }]
               },
             },
             { $unwind: "$car" },
@@ -80,27 +72,33 @@ export const getRentalReports = async (req, res) => {
                 localField: "user",
                 foreignField: "_id",
                 as: "user",
+                pipeline: [{ $project: { name: 1, email: 1 } }]
               },
             },
-            { $unwind: "$user" },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
             {
               $project: {
-                "user.googleId": 0,
-                "user.role": 0,
-                "user.createdAt": 0,
-                "user.updatedAt": 0,
-                "car.createdAt": 0,
-                "car.updatedAt": 0,
+                _id: 1,
+                car: 1,
+                user: 1,
+                customer: 1,
+                startTime: 1,
+                endTime: 1,
+                status: 1,
+                isSettled: 1,
+                finalAmountCollected: 1,
+                advance: 1,
               },
             },
-            { $sort: { startTime: -1 } },
           ],
-          totalAllTime: [
+          totals: [
             {
               $group: {
                 _id: null,
                 totalCollected: { $sum: "$finalAmountCollected" },
                 count: { $sum: 1 },
+                activeCount: { $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] } },
+                completedCount: { $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] } },
               },
             },
           ],
@@ -109,18 +107,16 @@ export const getRentalReports = async (req, res) => {
     ];
 
     const results = await RentalEntry.aggregate(pipeline);
-
     const data = results[0];
-    const totalCollected = data.totalAllTime[0]
-      ? data.totalAllTime[0].totalCollected
-      : 0;
-    const count = data.totalAllTime[0] ? data.totalAllTime[0].count : 0;
+    const totals = data.totals[0] || { totalCollected: 0, count: 0, activeCount: 0, completedCount: 0 };
 
     res.json({
       meta: {
-        totalCollected,
-        count,
-        filters: { carId, month, startDate, endDate },
+        totalCollected: totals.totalCollected,
+        count: totals.count,
+        activeCount: totals.activeCount,
+        completedCount: totals.completedCount,
+        filters: { carId, month, startDate, endDate, includeActive },
       },
       rentals: data.rentals,
     });
@@ -130,58 +126,89 @@ export const getRentalReports = async (req, res) => {
   }
 };
 
-// @desc    Get aggregated stats (Monthly and Per Car)
+// @desc    Get aggregated stats (optimized with proper indexing)
 // @route   GET /reports/stats
 // @access  Private/Admin
 export const getStats = async (req, res) => {
   try {
-    const pipelineCar = [
-      {
-        $group: {
-          _id: "$car",
-          totalCollected: { $sum: "$finalAmountCollected" },
-          count: { $sum: 1 },
+    // Run all aggregations in parallel for speed
+    const [carStats, monthStats, overallStats] = await Promise.all([
+      // Per Car stats - uses car index
+      RentalEntry.aggregate([
+        {
+          $group: {
+            _id: "$car",
+            totalCollected: { $sum: "$finalAmountCollected" },
+            count: { $sum: 1 },
+          },
         },
-      },
-      {
-        $lookup: {
-          from: "cars",
-          localField: "_id",
-          foreignField: "_id",
-          as: "carDetails",
+        {
+          $lookup: {
+            from: "cars",
+            localField: "_id",
+            foreignField: "_id",
+            as: "carDetails",
+            pipeline: [{ $project: { brand: 1, model: 1, plateNumber: 1 } }]
+          },
         },
-      },
-      { $unwind: "$carDetails" },
-      {
-        $project: {
-          carBrand: "$carDetails.brand",
-          carModel: "$carDetails.model",
-          plateNumber: "$carDetails.plateNumber",
-          totalCollected: 1,
-          count: 1,
+        { $unwind: "$carDetails" },
+        {
+          $project: {
+            carBrand: "$carDetails.brand",
+            carModel: "$carDetails.model",
+            plateNumber: "$carDetails.plateNumber",
+            totalCollected: 1,
+            count: 1,
+          },
         },
-      },
-    ];
+        { $sort: { totalCollected: -1 } },
+        { $limit: 10 }, // Top 10 cars only
+      ]),
 
-    const pipelineMonth = [
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$startTime" } },
-          totalCollected: { $sum: "$finalAmountCollected" },
-          count: { $sum: 1 },
+      // Monthly stats - uses startTime index
+      RentalEntry.aggregate([
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$startTime" } },
+            totalCollected: { $sum: "$finalAmountCollected" },
+            count: { $sum: 1 },
+          },
         },
-      },
-      { $sort: { _id: -1 } },
-    ];
+        { $sort: { _id: -1 } },
+        { $limit: 12 }, // Last 12 months only
+      ]),
 
-    const [carStats, monthStats] = await Promise.all([
-      RentalEntry.aggregate(pipelineCar),
-      RentalEntry.aggregate(pipelineMonth),
+      // Overall stats - single pass
+      RentalEntry.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalCollected: { $sum: "$finalAmountCollected" },
+            count: { $sum: 1 },
+            activeCount: { $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] } },
+            completedCount: { $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] } },
+            pendingSettlement: { $sum: { $cond: [{ $eq: ["$isSettled", false] }, 1, 0] } },
+            totalDeductions: { $sum: "$deductions.amount" },
+            totalChot: { $sum: "$chot" },
+            totalGhata: { $sum: "$ghata.amount" },
+          },
+        },
+      ]),
     ]);
 
     res.json({
       perCar: carStats,
       monthly: monthStats,
+      overall: overallStats[0] || {
+        totalCollected: 0,
+        count: 0,
+        activeCount: 0,
+        completedCount: 0,
+        pendingSettlement: 0,
+        totalDeductions: 0,
+        totalChot: 0,
+        totalGhata: 0,
+      },
     });
   } catch (err) {
     console.error(err.message);

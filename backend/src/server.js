@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import passport from "./config/passport.js";
 import connectDB from "./config/db.js";
 
@@ -18,21 +19,38 @@ connectDB();
 
 const app = express();
 
-// Middleware
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-];
+// Get allowed origins from environment variable or use defaults for development
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.FRONTEND_URL;
+
+  if (envOrigins) {
+    // Support comma-separated origins in FRONTEND_URL
+    return envOrigins.split(',').map(origin => origin.trim());
+  }
+
+  // Default development origins (fallback only)
+  if (process.env.NODE_ENV !== 'production') {
+    return [
+      "http://localhost:5173",
+      "http://localhost:5174",
+    ];
+  }
+
+  return [];
+};
+
+const allowedOrigins = getAllowedOrigins();
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like Postman, mobile apps)
+      // Allow requests with no origin (like Postman, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -49,7 +67,16 @@ app.use(
     secret: process.env.SESSION_SECRET || "secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === "production" },
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+    }),
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    },
   })
 );
 
@@ -67,6 +94,7 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-const PORT = 8000;
+// Use PORT from environment variable
+const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, console.log(`Server running on port ${PORT}`));

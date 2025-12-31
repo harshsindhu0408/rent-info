@@ -17,7 +17,7 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
     // Successful authentication, redirect dashboard.
-    res.redirect("http://localhost:5173/dashboard");
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 

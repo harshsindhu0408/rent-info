@@ -3,6 +3,7 @@ import { check } from "express-validator";
 import {
   createRental,
   getRentals,
+  getAllRentalsUnpaginated,
   getRentalById,
   updateRental,
   deleteRental,
@@ -11,13 +12,16 @@ import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// All routes require authentication
+
+// POST create rental - protected
 router.post(
   "/",
   [
     ensureAuth,
+    ensureAdmin,
     check("carId", "Car ID is required").not().isEmpty(),
     check("startTime", "Start Time is required").isISO8601(),
-    // check("endTime", "End Time is required").isISO8601(), // Now optional
     check("deductionAmount", "Deduction amount must be a number")
       .optional()
       .isNumeric(),
@@ -25,12 +29,19 @@ router.post(
   createRental
 );
 
+// GET paginated rentals with search/filter - protected
 router.get("/", [ensureAuth, ensureAdmin], getRentals);
 
+// GET all rentals without pagination (for dashboard stats) - protected
+router.get("/all", [ensureAuth, ensureAdmin], getAllRentalsUnpaginated);
+
+// GET single rental by ID - protected
 router.get("/:id", [ensureAuth, ensureAdmin], getRentalById);
 
+// PUT update rental - protected
 router.put("/:id", [ensureAuth, ensureAdmin], updateRental);
 
+// DELETE rental - protected
 router.delete("/:id", [ensureAuth, ensureAdmin], deleteRental);
 
 export default router;

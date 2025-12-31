@@ -11,9 +11,14 @@ import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getCars);
-router.get("/:id", getCar);
+// All routes require authentication
+// GET all cars - protected
+router.get("/", [ensureAuth, ensureAdmin], getCars);
 
+// GET single car - protected
+router.get("/:id", [ensureAuth, ensureAdmin], getCar);
+
+// POST create car - protected
 router.post(
   "/",
   [
@@ -34,6 +39,7 @@ router.post(
   addCar
 );
 
+// PATCH update car - protected
 router.patch(
   "/:id",
   [
@@ -45,6 +51,7 @@ router.patch(
   updateCar
 );
 
+// DELETE car - protected
 router.delete("/:id", [ensureAuth, ensureAdmin], deleteCar);
 
 export default router;
