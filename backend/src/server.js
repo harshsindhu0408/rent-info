@@ -20,14 +20,13 @@ connectDB();
 const app = express();
 
 // Trust proxy for Vercel deployment
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Allowed origins for CORS - add your domains here
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-  "https://rent.sindhustudio.in",
   "https://rent-info.vercel.app",
 ];
 
@@ -37,7 +36,13 @@ app.use(
       // Allow requests with no origin (like Postman, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // Check if origin is allowed or if it's a local network IP (for mobile testing)
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith("http://192.168.") ||
+        origin.startsWith("http://10.") ||
+        origin.startsWith("http://localhost")
+      ) {
         callback(null, true);
       } else {
         console.warn(`CORS blocked origin: ${origin}`);
@@ -51,7 +56,7 @@ app.use(
 app.use(express.json());
 
 // Only use morgan in development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
@@ -93,8 +98,12 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 8000;
 
 // Only listen when not in Vercel serverless environment
-if (process.env.VERCEL !== '1') {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+  });
 }
 
 // Export for Vercel serverless

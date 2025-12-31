@@ -26,12 +26,12 @@ const Layout = ({ children }) => {
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
 
@@ -50,7 +50,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <header className="md:hidden bg-white shadow-sm px-4 py-3 flex justify-between items-center z-30 relative sticky top-0">
+      <header className="md:hidden bg-white shadow-sm px-4 py-3 flex justify-between items-center z-30 sticky top-0">
         <span className="text-lg font-bold text-gray-900">RentManager</span>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -63,7 +63,7 @@ const Layout = ({ children }) => {
       {/* Sidebar / Navigation */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-20 md:translate-x-0 md:static md:shadow-lg md:h-screen",
+          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:shadow-lg md:h-screen",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -133,7 +133,7 @@ const Layout = ({ children }) => {
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-10 md:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

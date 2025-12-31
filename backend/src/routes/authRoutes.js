@@ -16,8 +16,14 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    // Successful authentication, redirect dashboard.
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    // Successful authentication, save session and redirect dashboard.
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.redirect("/");
+      }
+      res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    });
   }
 );
 

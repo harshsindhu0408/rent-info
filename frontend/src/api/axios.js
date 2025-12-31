@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -22,12 +22,12 @@ api.interceptors.response.use(
       // Redirect to login on 401 (Unauthorized) or 403 (Forbidden)
       if (status === 401 || status === 403) {
         // Clear any stored user data
-        localStorage.removeItem('user');
+        localStorage.removeItem("user");
 
         // Only redirect if not already on login page
-        if (window.location.pathname !== '/login') {
+        if (window.location.pathname !== "/login") {
           // Use window.location for full page redirect to clear state
-          window.location.href = '/login';
+          window.location.href = "/login";
         }
       }
     }
