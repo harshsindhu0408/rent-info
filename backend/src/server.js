@@ -19,6 +19,9 @@ connectDB();
 
 const app = express();
 
+// Trust proxy for Vercel deployment
+app.set('trust proxy', 1);
+
 // Get allowed origins from environment variable or use defaults for development
 const getAllowedOrigins = () => {
   const envOrigins = process.env.FRONTEND_URL;
@@ -59,7 +62,11 @@ app.use(
 );
 
 app.use(express.json());
-app.use(morgan("dev"));
+
+// Only use morgan in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan("dev"));
+}
 
 // Session Config
 app.use(
@@ -74,7 +81,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // "none" for cross-site cookies in production
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     },
   })
@@ -90,11 +97,18 @@ app.use("/api/cars", carRoutes);
 app.use("/api/rentals", rentalRoutes);
 app.use("/api/reports", reportRoutes);
 
+// Health check endpoint
 app.get("/", (req, res) => {
-  res.send("API is running...");
+  res.json({ status: "ok", message: "API is running..." });
 });
 
 // Use PORT from environment variable
 const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, console.log(`Server running on port ${PORT}`));
+// Only listen when not in Vercel serverless environment
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// Export for Vercel serverless
+export default app;
