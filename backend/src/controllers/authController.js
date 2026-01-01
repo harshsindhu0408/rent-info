@@ -1,8 +1,8 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import dotenv from 'dotenv'
-dotenv.config()
+import dotenv from "dotenv";
+dotenv.config();
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -15,7 +15,7 @@ const generateToken = (userId) => {
 export const registerUser = async (req, res) => {
   const { name, email, password, creationKey } = req.body;
   const accountCreationKey = process.env.ACCOUNT_CREATION_KEY;
-  console.log(accountCreationKey)
+  console.log(accountCreationKey);
   try {
     // Validate required fields
     if (!name || !email || !password || !creationKey) {
@@ -51,7 +51,7 @@ export const registerUser = async (req, res) => {
       res.cookie("jwt", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
       });
 
@@ -85,7 +85,7 @@ export const loginUser = async (req, res) => {
       res.cookie("jwt", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Ensure cross-site access in prod if needed, lax for dev
         maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
       });
 

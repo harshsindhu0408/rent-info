@@ -21,6 +21,11 @@ api.interceptors.response.use(
 
       // Redirect to login on 401 (Unauthorized) or 403 (Forbidden)
       if (status === 401 || status === 403) {
+        // Don't redirect if it's just the initial auth check failing (user not logged in)
+        if (error.config.url.includes("/auth/me")) {
+          return Promise.reject(error);
+        }
+
         // Clear any stored user data
         localStorage.removeItem("user");
 
