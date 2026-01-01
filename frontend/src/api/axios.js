@@ -8,6 +8,20 @@ const api = axios.create({
   withCredentials: true, // Important for cookies/session
 });
 
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Response interceptor to handle 401/403 errors globally
 api.interceptors.response.use(
   (response) => {
@@ -27,7 +41,7 @@ api.interceptors.response.use(
         }
 
         // Clear any stored user data
-        localStorage.removeItem("user");
+        localStorage.removeItem("token");
 
         // Only redirect if not already on login page
         if (window.location.pathname !== "/login") {

@@ -13,6 +13,7 @@ const generateToken = (userId) => {
 // @desc    Register a new user
 // @route   POST /auth/register
 export const registerUser = async (req, res) => {
+  console.log("Aaagaya")
   const { name, email, password, creationKey } = req.body;
   const accountCreationKey = process.env.ACCOUNT_CREATION_KEY;
   console.log(accountCreationKey);
@@ -33,6 +34,8 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    console.log("User does not exist", userExists);
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -47,26 +50,20 @@ export const registerUser = async (req, res) => {
     if (user) {
       const token = generateToken(user._id);
 
-      // Set HTTP-only cookie
-      res.cookie("jwt", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
-      });
-
+      // Send token in response
       res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        token: token,
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
     }
   } catch (error) {
-    console.error("Register Error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Register Error:", error.message, error.stack);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
@@ -81,19 +78,13 @@ export const loginUser = async (req, res) => {
     if (user && (await bcrypt.compare(password, user.password))) {
       const token = generateToken(user._id);
 
-      // Set HTTP-only cookie
-      res.cookie("jwt", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Ensure cross-site access in prod if needed, lax for dev
-        maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
-      });
-
+      // Send token in response
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        token: token,
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });
@@ -107,10 +98,7 @@ export const loginUser = async (req, res) => {
 // @desc    Logout user
 // @route   POST /auth/logout
 export const logoutUser = (req, res) => {
-  res.cookie("jwt", "", {
-    httpOnly: true,
-    expires: new Date(0),
-  });
+  // Client is responsible for deleting the token
   res.status(200).json({ message: "Logged out successfully" });
 };
 

@@ -1,12 +1,12 @@
 import Car from "../models/Car.js";
 import { validationResult } from "express-validator";
 
-// @desc    Get all cars
+// @desc    Get all cars for the logged-in user
 // @route   GET /api/cars
-// @access  Public
+// @access  Private
 export const getCars = async (req, res) => {
   try {
-    const cars = await Car.find();
+    const cars = await Car.find({ user: req.user._id });
     res.json(cars);
   } catch (err) {
     console.error(err.message);
@@ -16,10 +16,10 @@ export const getCars = async (req, res) => {
 
 // @desc    Get single car
 // @route   GET /api/cars/:id
-// @access  Public
+// @access  Private
 export const getCar = async (req, res) => {
   try {
-    const car = await Car.findById(req.params.id);
+    const car = await Car.findOne({ _id: req.params.id, user: req.user._id });
     if (!car) {
       return res.status(404).json({ msg: "Car not found" });
     }
@@ -35,7 +35,7 @@ export const getCar = async (req, res) => {
 
 // @desc    Add new car
 // @route   POST /api/cars
-// @access  Private/Admin
+// @access  Private
 export const addCar = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -59,6 +59,7 @@ export const addCar = async (req, res) => {
       hourlyRate,
       dailyRate,
       status,
+      user: req.user._id, // Assign to logged-in user
     });
 
     await car.save();
@@ -71,7 +72,7 @@ export const addCar = async (req, res) => {
 
 // @desc    Update car
 // @route   PATCH /api/cars/:id
-// @access  Private/Admin
+// @access  Private
 export const updateCar = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -90,7 +91,8 @@ export const updateCar = async (req, res) => {
   if (status) carFields.status = status;
 
   try {
-    let car = await Car.findById(req.params.id);
+    // Ensure car belongs to user
+    let car = await Car.findOne({ _id: req.params.id, user: req.user._id });
     if (!car) return res.status(404).json({ msg: "Car not found" });
 
     car = await Car.findByIdAndUpdate(
@@ -111,10 +113,11 @@ export const updateCar = async (req, res) => {
 
 // @desc    Delete car
 // @route   DELETE /api/cars/:id
-// @access  Private/Admin
+// @access  Private
 export const deleteCar = async (req, res) => {
   try {
-    const car = await Car.findById(req.params.id);
+    // Ensure car belongs to user
+    const car = await Car.findOne({ _id: req.params.id, user: req.user._id });
     if (!car) return res.status(404).json({ msg: "Car not found" });
 
     await Car.deleteOne({ _id: req.params.id });

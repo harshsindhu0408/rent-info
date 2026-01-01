@@ -8,13 +8,15 @@ import User from "../models/User.js";
 export const ensureAuth = async (req, res, next) => {
   let token;
 
-  // Check for token in cookies
-  if (req.cookies && req.cookies.jwt) {
-    token = req.cookies.jwt;
-  }
-
-  if (token) {
+  // Check for token in headers
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
     try {
+      // Get token from header
+      token = req.headers.authorization.split(" ")[1];
+
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

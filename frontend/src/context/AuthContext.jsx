@@ -7,17 +7,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize user from local storage token if available (optimistic)
   useEffect(() => {
-    checkUserLoggedIn();
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Ideally verify token with backend, but for now just load user if stored
+      // Or rely on checkUserLoggedIn to fetch fresh profile
+      checkUserLoggedIn();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const checkUserLoggedIn = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      // api interceptor will attach token
       const res = await api.get("/auth/me");
       setUser(res.data);
     } catch (error) {
-      // If 401/403, the interceptor handles redirect
-      // Just clear user state for other errors
+      console.error("Auth check failed:", error);
+      localStorage.removeItem("token");
       setUser(null);
     } finally {
       setLoading(false);
@@ -27,8 +42,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const res = await api.post("/auth/login", { email, password });
-      setUser(res.data);
-      return { success: true };
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        setUser(res.data);
+        return { success: true };
+      }
+      return { success: false, message: "No token received" };
     } catch (error) {
       console.error("Login error:", error);
       return {
@@ -41,8 +60,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const res = await api.post("/auth/register", userData);
-      setUser(res.data);
-      return { success: true };
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        setUser(res.data);
+        return { success: true };
+      }
+      return { success: false, message: "No token received" };
     } catch (error) {
       console.error("Register error:", error);
       return {
@@ -54,12 +77,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      // Optional: Tell backend to invalidate if needed, but primarily client-side
+      // await api.post("/auth/logout");
+      localStorage.removeItem("token");
       setUser(null);
-      // Redirect to login after logout
-      // window.location.href = '/login'; // Let the component handle redirect or state change
     } catch (error) {
       console.error("Logout error:", error);
+      localStorage.removeItem("token");
       setUser(null);
     }
   };

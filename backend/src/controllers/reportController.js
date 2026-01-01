@@ -3,12 +3,14 @@ import mongoose from "mongoose";
 
 // @desc    Get rental reports
 // @route   GET /reports/rent
-// @access  Private/Admin
+// @access  Private
 export const getRentalReports = async (req, res) => {
   try {
     const { carId, month, startDate, endDate, includeActive } = req.query;
 
-    const matchStage = {};
+    const matchStage = {
+      user: req.user._id, // Filter by user
+    };
 
     // Filter by Car ID
     if (carId) {
@@ -17,7 +19,7 @@ export const getRentalReports = async (req, res) => {
 
     // Filter by Date Range
     if (startDate && endDate) {
-      if (includeActive === 'true') {
+      if (includeActive === "true") {
         matchStage.startTime = {
           $gte: new Date(startDate),
           $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
@@ -34,9 +36,17 @@ export const getRentalReports = async (req, res) => {
     if (month && !startDate && !endDate) {
       const date = new Date(month);
       const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+      const endOfMonth = new Date(
+        date.getFullYear(),
+        date.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      );
 
-      if (includeActive === 'true') {
+      if (includeActive === "true") {
         matchStage.startTime = { $gte: startOfMonth, $lte: endOfMonth };
       } else {
         matchStage.endTime = { $gte: startOfMonth, $lte: endOfMonth };
@@ -44,7 +54,11 @@ export const getRentalReports = async (req, res) => {
     }
 
     // If no date filter and not including active, require endTime
-    if (!matchStage.endTime && !matchStage.startTime && includeActive !== 'true') {
+    if (
+      !matchStage.endTime &&
+      !matchStage.startTime &&
+      includeActive !== "true"
+    ) {
       matchStage.endTime = { $ne: null };
     }
 
@@ -62,7 +76,9 @@ export const getRentalReports = async (req, res) => {
                 localField: "car",
                 foreignField: "_id",
                 as: "car",
-                pipeline: [{ $project: { brand: 1, model: 1, plateNumber: 1 } }]
+                pipeline: [
+                  { $project: { brand: 1, model: 1, plateNumber: 1 } },
+                ],
               },
             },
             { $unwind: "$car" },
@@ -72,7 +88,7 @@ export const getRentalReports = async (req, res) => {
                 localField: "user",
                 foreignField: "_id",
                 as: "user",
-                pipeline: [{ $project: { name: 1, email: 1 } }]
+                pipeline: [{ $project: { name: 1, email: 1 } }],
               },
             },
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
@@ -97,8 +113,12 @@ export const getRentalReports = async (req, res) => {
                 _id: null,
                 totalCollected: { $sum: "$finalAmountCollected" },
                 count: { $sum: 1 },
-                activeCount: { $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] } },
-                completedCount: { $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] } },
+                activeCount: {
+                  $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] },
+                },
+                completedCount: {
+                  $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] },
+                },
               },
             },
           ],
@@ -108,7 +128,12 @@ export const getRentalReports = async (req, res) => {
 
     const results = await RentalEntry.aggregate(pipeline);
     const data = results[0];
-    const totals = data.totals[0] || { totalCollected: 0, count: 0, activeCount: 0, completedCount: 0 };
+    const totals = data.totals[0] || {
+      totalCollected: 0,
+      count: 0,
+      activeCount: 0,
+      completedCount: 0,
+    };
 
     res.json({
       meta: {
@@ -128,13 +153,16 @@ export const getRentalReports = async (req, res) => {
 
 // @desc    Get aggregated stats (optimized with proper indexing)
 // @route   GET /reports/stats
-// @access  Private/Admin
+// @access  Private
 export const getStats = async (req, res) => {
   try {
+    const userIdMatch = { $match: { user: req.user._id } };
+
     // Run all aggregations in parallel for speed
     const [carStats, monthStats, overallStats] = await Promise.all([
       // Per Car stats - uses car index
       RentalEntry.aggregate([
+        userIdMatch,
         {
           $group: {
             _id: "$car",
@@ -148,7 +176,7 @@ export const getStats = async (req, res) => {
             localField: "_id",
             foreignField: "_id",
             as: "carDetails",
-            pipeline: [{ $project: { brand: 1, model: 1, plateNumber: 1 } }]
+            pipeline: [{ $project: { brand: 1, model: 1, plateNumber: 1 } }],
           },
         },
         { $unwind: "$carDetails" },
@@ -167,6 +195,7 @@ export const getStats = async (req, res) => {
 
       // Monthly stats - uses startTime index
       RentalEntry.aggregate([
+        userIdMatch,
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m", date: "$startTime" } },
@@ -180,14 +209,21 @@ export const getStats = async (req, res) => {
 
       // Overall stats - single pass
       RentalEntry.aggregate([
+        userIdMatch,
         {
           $group: {
             _id: null,
             totalCollected: { $sum: "$finalAmountCollected" },
             count: { $sum: 1 },
-            activeCount: { $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] } },
-            completedCount: { $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] } },
-            pendingSettlement: { $sum: { $cond: [{ $eq: ["$isSettled", false] }, 1, 0] } },
+            activeCount: {
+              $sum: { $cond: [{ $eq: ["$status", "Active"] }, 1, 0] },
+            },
+            completedCount: {
+              $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] },
+            },
+            pendingSettlement: {
+              $sum: { $cond: [{ $eq: ["$isSettled", false] }, 1, 0] },
+            },
             totalDeductions: { $sum: "$deductions.amount" },
             totalChot: { $sum: "$chot" },
             totalGhata: { $sum: "$ghata.amount" },
