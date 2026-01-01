@@ -13,10 +13,8 @@ const generateToken = (userId) => {
 // @desc    Register a new user
 // @route   POST /auth/register
 export const registerUser = async (req, res) => {
-  console.log("Aaagaya")
   const { name, email, password, creationKey } = req.body;
   const accountCreationKey = process.env.ACCOUNT_CREATION_KEY;
-  console.log(accountCreationKey);
   try {
     // Validate required fields
     if (!name || !email || !password || !creationKey) {
