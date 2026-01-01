@@ -2,9 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
-import session from "express-session";
-import MongoStore from "connect-mongo";
-import passport from "./config/passport.js";
+import cookieParser from "cookie-parser";
+// import passport from "./config/passport.js"; // Removed
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -54,34 +53,14 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser()); // Add cookie parser
 
 // Only use morgan in development
 if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
-// Session Config
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "secret",
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-      collectionName: "sessions",
-    }),
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
-    },
-  })
-);
-
-// Passport Config
-app.use(passport.initialize());
-app.use(passport.session());
+// Session and Passport removed
 
 // Routes
 app.use("/auth", authRoutes);
