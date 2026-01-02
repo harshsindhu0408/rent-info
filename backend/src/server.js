@@ -24,11 +24,9 @@ app.set("trust proxy", 1);
 // Allowed origins for CORS - add your domains here
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3000",
   "https://rent-info.vercel.app",
-  "https://rent.sindhustudio.in/",
-  "https://apirent.sindhustudio.in/",
+  "https://rent.sindhustudio.in",
+  "http://rent.sindhustudio.in",
   "https://apirent.sindhustudio.in"
 ];
 
