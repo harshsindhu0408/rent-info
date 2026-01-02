@@ -29,6 +29,9 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://rent.sindhustudio.in",
   "https://rent-info.vercel.app",
+  "https://rent.sindhustudio.in/",
+  "https://apirent.sindhustudio.in/",
+  "https://apirent.sindhustudio.in"
 ];
 
 app.use(
