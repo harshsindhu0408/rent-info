@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import DatePicker from "react-datepicker";
+import { DatePicker, MonthPicker } from "../components/common";
 import {
   BarChart,
   Bar,
@@ -288,16 +288,13 @@ const Reports = () => {
             ))}
           </select>
 
-          <DatePicker
+          <MonthPicker
             selected={filters.month ? new Date(filters.month) : null}
             onChange={(date) => {
               const m = date ? date.toISOString().slice(0, 7) : "";
               setFilters({ ...filters, month: m, startDate: "", endDate: "" });
             }}
-            dateFormat="MMM yyyy"
-            showMonthYearPicker
-            placeholderText="Month"
-            className="w-full px-3 py-2 md:py-3 bg-gray-50 border-0 rounded-lg md:rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-xs md:text-sm"
+            placeholder="Month"
             isClearable
           />
 
@@ -307,9 +304,7 @@ const Reports = () => {
               const d = date ? date.toISOString().slice(0, 10) : "";
               setFilters({ ...filters, startDate: d, month: "" });
             }}
-            dateFormat="MMM d"
-            placeholderText="From"
-            className="w-full px-3 py-2 md:py-3 bg-gray-50 border-0 rounded-lg md:rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-xs md:text-sm"
+            placeholder="From"
             isClearable
           />
 
@@ -319,9 +314,8 @@ const Reports = () => {
               const d = date ? date.toISOString().slice(0, 10) : "";
               setFilters({ ...filters, endDate: d, month: "" });
             }}
-            dateFormat="MMM d"
-            placeholderText="To"
-            className="w-full px-3 py-2 md:py-3 bg-gray-50 border-0 rounded-lg md:rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-xs md:text-sm"
+            placeholder="To"
+            minDate={filters.startDate ? new Date(filters.startDate) : null}
             isClearable
           />
 

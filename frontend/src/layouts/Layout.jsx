@@ -72,7 +72,7 @@ const Layout = ({ children }) => {
       {/* Sidebar / Navigation */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:shadow-lg h-full flex flex-col",
+          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:sticky md:top-0 md:h-screen md:shadow-lg flex flex-col",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

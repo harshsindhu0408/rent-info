@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
+import { DateTimePicker } from "../common";
 import { X, Car as CarIcon, User, Calendar, IndianRupee, CheckCircle } from "lucide-react";
 
 const RentalFormModal = ({
@@ -159,14 +159,10 @@ const RentalFormModal = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
                                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Start</label>
-                                <DatePicker
+                                <DateTimePicker
                                     selected={formData.startTime}
                                     onChange={(date) => setFormData({ ...formData, startTime: date })}
-                                    showTimeSelect
-                                    dateFormat="MMM d, yyyy — h:mm aa"
-                                    timeIntervals={15}
-                                    className="w-full px-3 sm:px-4 py-3 sm:py-3.5 bg-gray-50 rounded-xl font-medium text-sm sm:text-base"
-                                    placeholderText="Start time"
+                                    placeholder="Select start date & time"
                                     required
                                 />
                             </div>
@@ -174,15 +170,11 @@ const RentalFormModal = ({
                                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">
                                     End <span className="text-[10px] sm:text-xs text-gray-400 font-normal">(Optional)</span>
                                 </label>
-                                <DatePicker
+                                <DateTimePicker
                                     selected={formData.endTime}
                                     onChange={(date) => setFormData({ ...formData, endTime: date })}
-                                    showTimeSelect
-                                    dateFormat="MMM d, yyyy — h:mm aa"
-                                    timeIntervals={15}
                                     minDate={formData.startTime}
-                                    className="w-full px-3 sm:px-4 py-3 sm:py-3.5 bg-gray-50 rounded-xl font-medium text-sm sm:text-base"
-                                    placeholderText="When returned"
+                                    placeholder="When returned"
                                     isClearable
                                 />
                             </div>
