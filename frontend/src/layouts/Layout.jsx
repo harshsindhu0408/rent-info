@@ -26,12 +26,12 @@ const Layout = ({ children }) => {
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
 
@@ -50,30 +50,39 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <header className="md:hidden bg-white shadow-sm px-4 py-3 flex justify-between items-center z-30 relative sticky top-0">
+      <header className="md:hidden bg-white shadow-sm px-4 py-3 flex justify-between items-center z-30 sticky top-0">
         <span className="text-lg font-bold text-gray-900">RentManager</span>
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition"
-        >
-          {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+            title="Sign Out"
+          >
+            <LogOut size={20} />
+          </button>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </header>
 
       {/* Sidebar / Navigation */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-20 md:translate-x-0 md:static md:shadow-lg md:h-screen",
+          "fixed inset-y-0 left-0 bg-white shadow-xl w-64 transform transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:shadow-lg h-full flex flex-col",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Desktop Logo */}
-        <div className="p-5 border-b border-gray-100 hidden md:block">
+        <div className="p-5 border-b border-gray-100 hidden md:block shrink-0">
           <h1 className="text-xl font-bold text-gray-900">RentManager</h1>
         </div>
 
         {/* Mobile Close Area */}
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center md:hidden">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center md:hidden shrink-0">
           <span className="text-lg font-bold text-gray-900">Menu</span>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -83,31 +92,35 @@ const Layout = ({ children }) => {
           </button>
         </div>
 
-        <div className="p-3 md:p-4 flex flex-col h-[calc(100vh-60px)] md:h-[calc(100vh-72px)] justify-between">
-          <nav className="space-y-1.5 md:space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={clsx(
-                    "flex items-center gap-3 px-3 md:px-4 py-3 rounded-xl transition-all duration-200",
-                    isActive
-                      ? "bg-blue-50 text-blue-600 shadow-sm font-semibold"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  )}
-                >
-                  <Icon size={20} className="shrink-0" />
-                  <span className="font-medium">{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Nav Content */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-3 md:p-4 flex-1 overflow-y-auto">
+            <nav className="space-y-1.5 md:space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={clsx(
+                      "flex items-center gap-3 px-3 md:px-4 py-3 rounded-xl transition-all duration-200",
+                      isActive
+                        ? "bg-blue-50 text-blue-600 shadow-sm font-semibold"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    )}
+                  >
+                    <Icon size={20} className="shrink-0" />
+                    <span className="font-medium">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
 
-          <div className="border-t border-gray-100 pt-3 md:pt-4">
+          {/* User & Logout Section */}
+          <div className="p-3 md:p-4 border-t border-gray-100 bg-white shrink-0">
             <div className="flex items-center px-3 md:px-4 py-2 md:py-3 mb-2">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold mr-3 text-sm md:text-base shrink-0">
                 {user?.name?.charAt(0) || "U"}
@@ -133,7 +146,7 @@ const Layout = ({ children }) => {
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-10 md:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

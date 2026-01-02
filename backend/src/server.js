@@ -2,9 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
-import session from "express-session";
-import MongoStore from "connect-mongo";
-import passport from "./config/passport.js";
+import cookieParser from "cookie-parser";
+// import passport from "./config/passport.js"; // Removed
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -20,14 +19,13 @@ connectDB();
 const app = express();
 
 // Trust proxy for Vercel deployment
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Allowed origins for CORS - add your domains here
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-  "https://rent.sindhustudio.in",
   "https://rent-info.vercel.app",
   "https://rent.sindhustudio.in/",
   "https://apirent.sindhustudio.in/",
@@ -40,7 +38,13 @@ app.use(
       // Allow requests with no origin (like Postman, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // Check if origin is allowed or if it's a local network IP (for mobile testing)
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith("http://192.168.") ||
+        origin.startsWith("http://10.") ||
+        origin.startsWith("http://localhost")
+      ) {
         callback(null, true);
       } else {
         console.warn(`CORS blocked origin: ${origin}`);
@@ -52,34 +56,14 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser()); // Add cookie parser
 
 // Only use morgan in development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
-// Session Config
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "secret",
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-      collectionName: "sessions",
-    }),
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
-    },
-  })
-);
-
-// Passport Config
-app.use(passport.initialize());
-app.use(passport.session());
+// Session and Passport removed
 
 // Routes
 app.use("/auth", authRoutes);
@@ -96,8 +80,12 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 8000;
 
 // Only listen when not in Vercel serverless environment
-if (process.env.VERCEL !== '1') {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+  });
 }
 
 // Export for Vercel serverless

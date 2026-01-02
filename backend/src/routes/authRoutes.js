@@ -1,45 +1,17 @@
 import express from "express";
-import passport from "passport";
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+  getUserProfile,
+} from "../controllers/authController.js";
+import { ensureAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// @desc    Auth with Google
-// @route   GET /auth/google
-router.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-// @desc    Google auth callback
-// @route   GET /auth/google/callback
-router.get(
-  "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => {
-    // Successful authentication, redirect dashboard.
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-  }
-);
-
-// @desc    Get current user
-// @route   GET /auth/me
-router.get("/me", (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json(req.user);
-  } else {
-    res.status(401).json({ message: "Not authenticated" });
-  }
-});
-
-// @desc    Logout user
-// @route   GET /auth/logout
-router.get("/logout", (req, res, next) => {
-  req.logout((err) => {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("/");
-  });
-});
+router.post("/register", registerUser);
+router.post("/login", loginUser);
+router.post("/logout", logoutUser);
+router.get("/me", ensureAuth, getUserProfile);
 
 export default router;

@@ -29,9 +29,10 @@ export const createRental = async (req, res) => {
   } = req.body;
 
   try {
-    const car = await Car.findById(carId);
+    // Ensure car belongs to user
+    const car = await Car.findOne({ _id: carId, user: req.user._id });
     if (!car) {
-      return res.status(404).json({ msg: "Car not found" });
+      return res.status(404).json({ msg: "Car not found or access denied" });
     }
 
     if (car.status !== "Available") {
@@ -85,21 +86,6 @@ export const createRental = async (req, res) => {
     const chotAmount = chot || 0;
     const advanceAmount = advance || 0;
 
-    // finalAmountCollected is typically Total Rent (+ Chot) - Deductions - Ghata
-    // Advance is usually part of the payment collection, so it helps track "Remaining".
-    // But for "Total Collected" (Revenue), it doesn't change the value of the service.
-    // However, if we want to track "Total Money In Hand", Advance is part of it.
-    // Let's assume the user meant Advance is just for record, and finalAmountCollected
-    // is the total value recognized. 
-    // Wait, if chot is profit, we add it. 
-    // Let's stick to the previous formula for finalAmountCollected as "Total Revenue Realized".
-    // Advance is just a payment breakdown.
-
-    // If no totalRent (Active), finalAmountCollected is just the Advance collected so far.
-    // If Completed, it's the full formula.
-    // But even if Active, cost implies potential revenue.
-    // Let's set it to Advance if status is Active, or formula if Completed.
-
     let finalAmountCollected = 0;
 
     if (status === "Active") {
@@ -113,7 +99,7 @@ export const createRental = async (req, res) => {
 
     const rental = new RentalEntry({
       car: carId,
-      user: req.user.id,
+      user: req.user._id, // Assign to logged-in user
       customer: {
         name: customerName,
         phone: customerPhone,
@@ -135,11 +121,7 @@ export const createRental = async (req, res) => {
 
     // Update car status
     if (status === "Completed") {
-      // Only make available if completed
-      // But wait, if we create a completed rental immediately (past record), car stays Available (since it was returned).
-      // If it is Active, car becomes Rented.
-      // Check if car was already available (it was, checked above).
-      // So if Completed, car remains Available (technically goes Rented -> Available instantly).
+      // car stays available (or becomes available)
     } else {
       car.status = "Rented";
       await car.save();
@@ -154,8 +136,7 @@ export const createRental = async (req, res) => {
 
 // @desc    Get all rentals with pagination, search, and filters
 // @route   GET /rentals
-// @access  Private/Admin
-// @query   page (default: 1), limit (default: 10), search, status, isSettled, carId, sortBy, sortOrder
+// @access  Private
 export const getRentals = async (req, res) => {
   try {
     // Parse query parameters with defaults
@@ -164,48 +145,55 @@ export const getRentals = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const {
-      search,        // Search term for car plate, customer name, car model/brand
-      status,        // Filter by status: 'Active' | 'Completed'
-      isSettled,     // Filter by settlement: 'true' | 'false'
-      carId,         // Filter by specific car
-      sortBy = 'createdAt',  // Sort field
-      sortOrder = 'desc',    // Sort order: 'asc' | 'desc'
+      search, // Search term for car plate, customer name, car model/brand
+      status, // Filter by status: 'Active' | 'Completed'
+      isSettled, // Filter by settlement: 'true' | 'false'
+      carId, // Filter by specific car
+      sortBy = "createdAt", // Sort field
+      sortOrder = "desc", // Sort order: 'asc' | 'desc'
     } = req.query;
 
     // Build aggregation pipeline
     const pipeline = [];
 
+    // Stage 0: Filter by User FIRST (crucial for security)
+    pipeline.push({
+      $match: {
+        user: req.user._id,
+      },
+    });
+
     // Stage 1: Lookup car details (for searching by car info)
     pipeline.push({
       $lookup: {
-        from: 'cars',
-        localField: 'car',
-        foreignField: '_id',
-        as: 'car',
+        from: "cars",
+        localField: "car",
+        foreignField: "_id",
+        as: "car",
       },
     });
 
     // Unwind car array to object (preserving nulls)
     pipeline.push({
       $unwind: {
-        path: '$car',
+        path: "$car",
         preserveNullAndEmptyArrays: true,
       },
     });
 
-    // Stage 2: Lookup user details
+    // Stage 2: Lookup user details (optional, since we filter by user)
     pipeline.push({
       $lookup: {
-        from: 'users',
-        localField: 'user',
-        foreignField: '_id',
-        as: 'user',
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "user",
       },
     });
 
     pipeline.push({
       $unwind: {
-        path: '$user',
+        path: "$user",
         preserveNullAndEmptyArrays: true,
       },
     });
@@ -215,34 +203,36 @@ export const getRentals = async (req, res) => {
 
     // Search filter (case-insensitive regex search)
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(search.trim(), "i");
       matchConditions.push({
         $or: [
-          { 'car.plateNumber': searchRegex },
-          { 'car.brand': searchRegex },
-          { 'car.model': searchRegex },
-          { 'customer.name': searchRegex },
-          { 'customer.phone': searchRegex },
+          { "car.plateNumber": searchRegex },
+          { "car.brand": searchRegex },
+          { "car.model": searchRegex },
+          { "customer.name": searchRegex },
+          { "customer.phone": searchRegex },
         ],
       });
     }
 
     // Status filter
-    if (status && ['Active', 'Completed'].includes(status)) {
+    if (status && ["Active", "Completed"].includes(status)) {
       matchConditions.push({ status: status });
     }
 
     // Settlement filter
-    if (isSettled !== undefined && isSettled !== '') {
-      const settledBool = isSettled === 'true';
+    if (isSettled !== undefined && isSettled !== "") {
+      const settledBool = isSettled === "true";
       matchConditions.push({ isSettled: settledBool });
     }
 
     // Car filter (by ID)
     if (carId) {
-      const mongoose = await import('mongoose');
+      const mongoose = await import("mongoose");
       if (mongoose.default.Types.ObjectId.isValid(carId)) {
-        matchConditions.push({ 'car._id': new mongoose.default.Types.ObjectId(carId) });
+        matchConditions.push({
+          "car._id": new mongoose.default.Types.ObjectId(carId),
+        });
       }
     }
 
@@ -272,24 +262,28 @@ export const getRentals = async (req, res) => {
         status: 1,
         createdAt: 1,
         updatedAt: 1,
-        'user._id': 1,
-        'user.name': 1,
-        'user.email': 1,
+        "user._id": 1,
+        "user.name": 1,
+        "user.email": 1,
       },
     });
 
     // Stage 5: Facet for pagination metadata and data
-    const sortField = ['createdAt', 'startTime', 'endTime', 'finalAmountCollected', 'totalRent'].includes(sortBy)
+    const sortField = [
+      "createdAt",
+      "startTime",
+      "endTime",
+      "finalAmountCollected",
+      "totalRent",
+    ].includes(sortBy)
       ? sortBy
-      : 'createdAt';
-    const sortDir = sortOrder === 'asc' ? 1 : -1;
+      : "createdAt";
+    const sortDir = sortOrder === "asc" ? 1 : -1;
 
     pipeline.push({
       $facet: {
         // Metadata: total count
-        metadata: [
-          { $count: 'totalCount' },
-        ],
+        metadata: [{ $count: "totalCount" }],
         // Data: sorted and paginated
         data: [
           { $sort: { [sortField]: sortDir } },
@@ -321,21 +315,21 @@ export const getRentals = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getRentals Error:', err.message);
+    console.error("getRentals Error:", err.message);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      message: "Server Error",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
 
 // @desc    Get all rentals without pagination (for dashboard/stats)
 // @route   GET /rentals/all
-// @access  Private/Admin
+// @access  Private
 export const getAllRentalsUnpaginated = async (req, res) => {
   try {
-    const rentals = await RentalEntry.find()
+    const rentals = await RentalEntry.find({ user: req.user._id })
       .populate("car")
       .populate("user", "name email")
       .sort({ createdAt: -1 });
@@ -348,10 +342,13 @@ export const getAllRentalsUnpaginated = async (req, res) => {
 
 // @desc    Get single rental by ID
 // @route   GET /rentals/:id
-// @access  Private/Admin
+// @access  Private
 export const getRentalById = async (req, res) => {
   try {
-    const rental = await RentalEntry.findById(req.params.id)
+    const rental = await RentalEntry.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    })
       .populate("car")
       .populate("user", "name email")
       .lean();
@@ -373,7 +370,8 @@ export const getRentalById = async (req, res) => {
     }
 
     // Calculate remaining amount after advance
-    const remainingAmount = (rental.finalAmountCollected || 0) - (rental.advance || 0);
+    const remainingAmount =
+      (rental.finalAmountCollected || 0) - (rental.advance || 0);
 
     res.json({
       success: true,
@@ -387,21 +385,21 @@ export const getRentalById = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getRentalById Error:', err.message);
+    console.error("getRentalById Error:", err.message);
     if (err.kind === "ObjectId") {
       return res.status(404).json({ success: false, msg: "Rental not found" });
     }
     res.status(500).json({
       success: false,
       message: "Server Error",
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 };
 
 // @desc    Update a rental
 // @route   PUT /rentals/:id
-// @access  Private/Admin
+// @access  Private
 export const updateRental = async (req, res) => {
   const {
     startTime,
@@ -417,30 +415,29 @@ export const updateRental = async (req, res) => {
     customerName,
     customerPhone,
     customerOccupation,
-    // status, // Removed strict dependency on status from body for auto-logic, but can still accept if needed. 
-    // Actually user wants to NOT use status option. We will infer it.
   } = req.body;
 
   try {
-    let rental = await RentalEntry.findById(req.params.id);
-    if (!rental) return res.status(404).json({ msg: "Rental not found" });
+    // Ensure rental belongs to user
+    let rental = await RentalEntry.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+    if (!rental)
+      return res.status(404).json({ msg: "Rental not found or access denied" });
 
     // Update fields if provided
     if (startTime) rental.startTime = startTime;
     // Handle EndTime and Status Logic
     if (endTime !== undefined) {
-      // user passing endTime (could be null or string)
       rental.endTime = endTime;
-      // If endTime is present, it implies Completed (returned).
       if (endTime) {
         rental.status = "Completed";
       } else {
-        // If expressly cleared, set back to Active
         rental.status = "Active";
       }
     }
 
-    // Alternatively, if user just modifies other things but rental has endTime, ensure status is right.
     if (rental.endTime) {
       rental.status = "Completed";
     } else {
@@ -448,9 +445,6 @@ export const updateRental = async (req, res) => {
     }
 
     if (isSettled !== undefined) rental.isSettled = isSettled;
-    // Ignore direct status update if we rely on endTime logic, OR allow it if explicitly passed?
-    // User said "No other option like completed and active should be there". 
-    // So we forcefully ignore req.body.status and use logic.
 
     if (customerName) rental.customer.name = customerName;
     if (customerPhone) rental.customer.phone = customerPhone;
@@ -460,14 +454,6 @@ export const updateRental = async (req, res) => {
     if (manualTotalRent !== undefined) {
       rental.totalRent = Number(manualTotalRent);
     } else if (rental.endTime && rental.startTime && !manualTotalRent) {
-      // If we have both times and NO manual override is set (or being set), we might want to recalc?
-      // NOTE: Current logic doesn't clear manualTotalRent if user updates time.
-      // Assuming if user didn't send manualTotalRent, we should recalc IF manual override wasn't used before.
-      // But we don't store "isManual" flag.
-      // Strategy: If times changed, and user didn't provide a manual total in this Request,
-      // we can try to re-calculate.
-      // Ideally, the frontend sends the new calculated total as 'manualTotalRent' or we calculate here.
-      // Let's recalculate here if times exist.
       const s = new Date(rental.startTime);
       const e = new Date(rental.endTime);
       const durationMs = e - s;
@@ -501,9 +487,9 @@ export const updateRental = async (req, res) => {
       rental.finalAmountCollected = Math.max(
         0,
         rental.totalRent -
-        rental.deductions.amount +
-        rental.chot -
-        rental.ghata.amount
+          rental.deductions.amount +
+          rental.chot -
+          rental.ghata.amount
       );
     }
 
@@ -525,10 +511,13 @@ export const updateRental = async (req, res) => {
 
 // @desc    Delete a rental
 // @route   DELETE /rentals/:id
-// @access  Private/Admin
+// @access  Private
 export const deleteRental = async (req, res) => {
   try {
-    const rental = await RentalEntry.findById(req.params.id);
+    const rental = await RentalEntry.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
     if (!rental) return res.status(404).json({ msg: "Rental not found" });
 
     if (rental.status === "Active") {

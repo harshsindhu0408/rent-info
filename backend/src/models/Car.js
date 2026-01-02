@@ -31,6 +31,12 @@ const carSchema = new mongoose.Schema(
       default: "Available",
       index: true, // Frequently filtered
     },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );
@@ -42,7 +48,7 @@ carSchema.index(
   { brand: "text", model: "text", plateNumber: "text" },
   {
     name: "car_search_index",
-    weights: { plateNumber: 3, brand: 2, model: 1 } // Plate number is most important for search
+    weights: { plateNumber: 3, brand: 2, model: 1 }, // Plate number is most important for search
   }
 );
 
@@ -55,4 +61,3 @@ carSchema.index({ brand: 1, model: 1 });
 const Car = mongoose.model("Car", carSchema);
 
 export default Car;
-
