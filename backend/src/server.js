@@ -13,6 +13,17 @@ import reportRoutes from "./routes/reportRoutes.js";
 
 dotenv.config();
 
+// Validate critical environment variables
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined in .env file");
+  // Don't exit process in development to allow easy setup, but warn loudly
+  // process.exit(1); 
+}
+
+if (!process.env.ACCOUNT_CREATION_KEY) {
+  console.warn("WARNING: ACCOUNT_CREATION_KEY is not defined in .env file. Registration may fail.");
+}
+
 // Connect to Database
 connectDB();
 
