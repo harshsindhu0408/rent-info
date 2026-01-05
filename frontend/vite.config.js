@@ -1,20 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // This is for 'npm run dev'
   server: {
-    host: true, // Listen on all network interfaces
+    host: true,
+    allowedHosts: [".sindhustudio.in"], // Allows the domain and all subdomains
     proxy: {
-      "/api": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
-      "/auth": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
+      "/api": { target: "http://localhost:8000", changeOrigin: true },
+      "/auth": { target: "http://localhost:8000", changeOrigin: true },
     },
   },
+  // This is for 'npm run preview' (what PM2 is running)
+  preview: {
+    host: true,
+    port: 5173,
+    allowedHosts: [".sindhustudio.in"] 
+  }
 });
