@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Cars from "./pages/Cars";
+import CarDetail from "./pages/CarDetail";
 import Rentals from "./pages/Rentals";
 import RentalDetail from "./pages/RentalDetail";
 import Reports from "./pages/Reports";
@@ -40,6 +41,14 @@ function App() {
               element={
                 <Layout>
                   <Cars />
+                </Layout>
+              }
+            />
+            <Route
+              path="/cars/:id"
+              element={
+                <Layout>
+                  <CarDetail />
                 </Layout>
               }
             />

@@ -1,11 +1,12 @@
 import express from "express";
 import { check } from "express-validator";
 import {
-  getCars,
-  getCar,
   addCar,
   updateCar,
   deleteCar,
+  addMaintenanceRecord,
+  getCars,
+  getCar,
 } from "../controllers/carController.js";
 import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
 
@@ -53,5 +54,17 @@ router.patch(
 
 // DELETE car - protected
 router.delete("/:id", [ensureAuth, ensureAdmin], deleteCar);
+
+// POST maintenance record - protected
+router.post(
+  "/:id/maintenance",
+  [
+    ensureAuth,
+    ensureAdmin,
+    check("description", "Description is required").not().isEmpty(),
+    check("amount", "Amount is required and must be a number").isNumeric(),
+  ],
+  addMaintenanceRecord
+);
 
 export default router;

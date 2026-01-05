@@ -327,15 +327,6 @@ const RentalDetail = () => {
                   </span>
                 </div>
 
-                {rental.advance > 0 && (
-                  <div className="flex justify-between items-center bg-gray-800/50 px-3 md:px-4 py-2 md:py-3 rounded-lg md:rounded-xl">
-                    <span className="text-gray-400 text-xs md:text-sm">Remaining</span>
-                    <span className="text-base md:text-lg font-bold text-amber-400">
-                      ₹{rental.remainingAmount?.toLocaleString() || 0}
-                    </span>
-                  </div>
-                )}
-
                 <div className="flex justify-center">
                   <span className={`text-[10px] md:text-xs px-3 md:px-4 py-1.5 md:py-2 rounded-full ${rental.isSettled
                       ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"

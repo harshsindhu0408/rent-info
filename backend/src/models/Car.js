@@ -37,6 +37,57 @@ const carSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Additional car details
+    color: {
+      type: String,
+      default: "",
+    },
+    year: {
+      type: Number,
+    },
+    fuelType: {
+      type: String,
+      enum: ["Petrol", "Diesel", "CNG", "Electric", "Hybrid", ""],
+      default: "",
+    },
+    transmission: {
+      type: String,
+      enum: ["Manual", "Automatic", ""],
+      default: "",
+    },
+    seatingCapacity: {
+      type: Number,
+      default: 5,
+    },
+    insuranceExpiry: {
+      type: Date,
+    },
+    pucExpiry: {
+      type: Date,
+    },
+    notes: {
+      type: String,
+      default: "",
+    },
+    lastServicedAt: {
+      type: Date,
+    },
+    maintenanceHistory: [
+      {
+        description: {
+          type: String,
+          required: true,
+        },
+        amount: {
+          type: Number,
+          required: true,
+        },
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

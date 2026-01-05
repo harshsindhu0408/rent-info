@@ -79,16 +79,24 @@ export const updateCar = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { brand, model, plateNumber, hourlyRate, dailyRate, status } = req.body;
+  const { brand, model, plateNumber, hourlyRate, dailyRate, status, color, year, fuelType, transmission, seatingCapacity, insuranceExpiry, pucExpiry, notes } = req.body;
 
-  // Build car object
+  // Build car object - only include fields that are explicitly provided
   const carFields = {};
-  if (brand) carFields.brand = brand;
-  if (model) carFields.model = model;
-  if (plateNumber) carFields.plateNumber = plateNumber;
-  if (hourlyRate) carFields.hourlyRate = hourlyRate;
-  if (dailyRate) carFields.dailyRate = dailyRate;
-  if (status) carFields.status = status;
+  if (brand !== undefined) carFields.brand = brand;
+  if (model !== undefined) carFields.model = model;
+  if (plateNumber !== undefined) carFields.plateNumber = plateNumber;
+  if (hourlyRate !== undefined) carFields.hourlyRate = hourlyRate;
+  if (dailyRate !== undefined) carFields.dailyRate = dailyRate;
+  if (status !== undefined) carFields.status = status;
+  if (color !== undefined) carFields.color = color;
+  if (year !== undefined) carFields.year = year;
+  if (fuelType !== undefined) carFields.fuelType = fuelType;
+  if (transmission !== undefined) carFields.transmission = transmission;
+  if (seatingCapacity !== undefined) carFields.seatingCapacity = seatingCapacity;
+  if (insuranceExpiry !== undefined) carFields.insuranceExpiry = insuranceExpiry;
+  if (pucExpiry !== undefined) carFields.pucExpiry = pucExpiry;
+  if (notes !== undefined) carFields.notes = notes;
 
   try {
     // Ensure car belongs to user
@@ -122,6 +130,48 @@ export const deleteCar = async (req, res) => {
 
     await Car.deleteOne({ _id: req.params.id });
     res.json({ msg: "Car removed" });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ msg: "Car not found" });
+    }
+    res.status(500).send("Server Error");
+  }
+};
+
+// @desc    Add maintenance record
+// @route   POST /api/cars/:id/maintenance
+// @access  Private
+export const addMaintenanceRecord = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { description, amount, date } = req.body;
+
+  try {
+    const car = await Car.findOne({ _id: req.params.id, user: req.user._id });
+    if (!car) {
+      return res.status(404).json({ msg: "Car not found" });
+    }
+
+    const newMaintenance = {
+      description,
+      amount,
+      date: date || Date.now(),
+    };
+
+    car.maintenanceHistory.push(newMaintenance);
+
+    // Update lastServicedAt if the new date is more recent
+    const recordDate = new Date(newMaintenance.date);
+    if (!car.lastServicedAt || recordDate > new Date(car.lastServicedAt)) {
+      car.lastServicedAt = recordDate;
+    }
+
+    await car.save();
+    res.json(car);
   } catch (err) {
     console.error(err.message);
     if (err.kind === "ObjectId") {
