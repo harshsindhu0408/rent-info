@@ -17,11 +17,13 @@ dotenv.config();
 if (!process.env.JWT_SECRET) {
   console.error("FATAL ERROR: JWT_SECRET is not defined in .env file");
   // Don't exit process in development to allow easy setup, but warn loudly
-  // process.exit(1); 
+  // process.exit(1);
 }
 
 if (!process.env.ACCOUNT_CREATION_KEY) {
-  console.warn("WARNING: ACCOUNT_CREATION_KEY is not defined in .env file. Registration may fail.");
+  console.warn(
+    "WARNING: ACCOUNT_CREATION_KEY is not defined in .env file. Registration may fail."
+  );
 }
 
 // Connect to Database
@@ -38,7 +40,7 @@ const allowedOrigins = [
   "https://rent-info.vercel.app",
   "https://rent.sindhustudio.in",
   "http://rent.sindhustudio.in",
-  "https://apirent.sindhustudio.in"
+  "https://apirent.sindhustudio.in",
 ];
 
 app.use(
@@ -79,6 +81,15 @@ app.use("/auth", authRoutes);
 app.use("/api/cars", carRoutes);
 app.use("/api/rentals", rentalRoutes);
 app.use("/api/reports", reportRoutes);
+
+// Serve static files from uploads directory
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Assuming uploads is in the root backend directory, which is one level up from src
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Health check endpoint
 app.get("/", (req, res) => {

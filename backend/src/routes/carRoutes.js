@@ -5,10 +5,13 @@ import {
   updateCar,
   deleteCar,
   addMaintenanceRecord,
+  updateMaintenanceRecord,
+  deleteMaintenanceRecord,
   getCars,
   getCar,
 } from "../controllers/carController.js";
 import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -46,6 +49,12 @@ router.patch(
   [
     ensureAuth,
     ensureAdmin,
+    upload.fields([
+      { name: "insurance", maxCount: 1 },
+      { name: "rc", maxCount: 1 },
+      { name: "puc", maxCount: 1 },
+      { name: "drivingLicence", maxCount: 1 },
+    ]),
     check("hourlyRate", "Hourly Rate must be a number").optional().isNumeric(),
     check("dailyRate", "Daily Rate must be a number").optional().isNumeric(),
   ],
@@ -65,6 +74,27 @@ router.post(
     check("amount", "Amount is required and must be a number").isNumeric(),
   ],
   addMaintenanceRecord
+);
+
+// PATCH update maintenance record - protected
+router.patch(
+  "/:id/maintenance/:recordId",
+  [
+    ensureAuth,
+    ensureAdmin,
+    check("description", "Description is required").optional().not().isEmpty(),
+    check("amount", "Amount is required and must be a number")
+      .optional()
+      .isNumeric(),
+  ],
+  updateMaintenanceRecord
+);
+
+// DELETE maintenance record - protected
+router.delete(
+  "/:id/maintenance/:recordId",
+  [ensureAuth, ensureAdmin],
+  deleteMaintenanceRecord
 );
 
 export default router;

@@ -197,8 +197,13 @@ export const getStats = async (req, res) => {
       RentalEntry.aggregate([
         userIdMatch,
         {
+          $match: {
+            endTime: { $ne: null },
+          },
+        },
+        {
           $group: {
-            _id: { $dateToString: { format: "%Y-%m", date: "$startTime" } },
+            _id: { $dateToString: { format: "%Y-%m", date: "$endTime" } },
             totalCollected: { $sum: "$finalAmountCollected" },
             count: { $sum: 1 },
           },

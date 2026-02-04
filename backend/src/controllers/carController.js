@@ -79,7 +79,22 @@ export const updateCar = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { brand, model, plateNumber, hourlyRate, dailyRate, status, color, year, fuelType, transmission, seatingCapacity, insuranceExpiry, pucExpiry, notes } = req.body;
+  const {
+    brand,
+    model,
+    plateNumber,
+    hourlyRate,
+    dailyRate,
+    status,
+    color,
+    year,
+    fuelType,
+    transmission,
+    seatingCapacity,
+    insuranceExpiry,
+    pucExpiry,
+    notes,
+  } = req.body;
 
   // Build car object - only include fields that are explicitly provided
   const carFields = {};
@@ -93,10 +108,28 @@ export const updateCar = async (req, res) => {
   if (year !== undefined) carFields.year = year;
   if (fuelType !== undefined) carFields.fuelType = fuelType;
   if (transmission !== undefined) carFields.transmission = transmission;
-  if (seatingCapacity !== undefined) carFields.seatingCapacity = seatingCapacity;
-  if (insuranceExpiry !== undefined) carFields.insuranceExpiry = insuranceExpiry;
+  if (seatingCapacity !== undefined)
+    carFields.seatingCapacity = seatingCapacity;
+  if (insuranceExpiry !== undefined)
+    carFields.insuranceExpiry = insuranceExpiry;
   if (pucExpiry !== undefined) carFields.pucExpiry = pucExpiry;
   if (notes !== undefined) carFields.notes = notes;
+
+  // Handle file uploads
+  if (req.files) {
+    if (req.files.insurance) {
+      carFields["documents.insurance"] = req.files.insurance[0].path;
+    }
+    if (req.files.rc) {
+      carFields["documents.rc"] = req.files.rc[0].path;
+    }
+    if (req.files.puc) {
+      carFields["documents.puc"] = req.files.puc[0].path;
+    }
+    if (req.files.drivingLicence) {
+      carFields["documents.drivingLicence"] = req.files.drivingLicence[0].path;
+    }
+  }
 
   try {
     // Ensure car belongs to user
@@ -176,6 +209,88 @@ export const addMaintenanceRecord = async (req, res) => {
     console.error(err.message);
     if (err.kind === "ObjectId") {
       return res.status(404).json({ msg: "Car not found" });
+    }
+    res.status(500).send("Server Error");
+  }
+};
+
+// @desc    Update maintenance record
+// @route   PATCH /api/cars/:id/maintenance/:recordId
+// @access  Private
+export const updateMaintenanceRecord = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { description, amount, date } = req.body;
+
+  try {
+    const car = await Car.findOne({ _id: req.params.id, user: req.user._id });
+    if (!car) {
+      return res.status(404).json({ msg: "Car not found" });
+    }
+
+    const record = car.maintenanceHistory.id(req.params.recordId);
+    if (!record) {
+      return res.status(404).json({ msg: "Maintenance record not found" });
+    }
+
+    if (description) record.description = description;
+    if (amount) record.amount = amount;
+    if (date) record.date = date;
+
+    // Recalculate lastServicedAt
+    if (date) {
+      let maxDate = new Date(0);
+      car.maintenanceHistory.forEach((rec) => {
+        if (new Date(rec.date) > maxDate) maxDate = new Date(rec.date);
+      });
+      // Only update if we found a valid date, otherwise keep current or null if empty (though we just updated one so it's not empty)
+      if (maxDate.getTime() > 0) car.lastServicedAt = maxDate;
+    }
+
+    await car.save();
+    res.json(car);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ msg: "Resource not found" });
+    }
+    res.status(500).send("Server Error");
+  }
+};
+
+// @desc    Delete maintenance record
+// @route   DELETE /api/cars/:id/maintenance/:recordId
+// @access  Private
+export const deleteMaintenanceRecord = async (req, res) => {
+  try {
+    const car = await Car.findOne({ _id: req.params.id, user: req.user._id });
+    if (!car) {
+      return res.status(404).json({ msg: "Car not found" });
+    }
+
+    // Pull the subdocument
+    car.maintenanceHistory.pull({ _id: req.params.recordId });
+
+    // Recalculate lastServicedAt
+    if (car.maintenanceHistory.length > 0) {
+      let maxDate = new Date(0);
+      car.maintenanceHistory.forEach((rec) => {
+        if (new Date(rec.date) > maxDate) maxDate = new Date(rec.date);
+      });
+      if (maxDate.getTime() > 0) car.lastServicedAt = maxDate;
+    } else {
+      car.lastServicedAt = null;
+    }
+
+    await car.save();
+    res.json(car);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ msg: "Resource not found" });
     }
     res.status(500).send("Server Error");
   }

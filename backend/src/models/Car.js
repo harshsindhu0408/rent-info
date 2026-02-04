@@ -88,6 +88,12 @@ const carSchema = new mongoose.Schema(
         },
       },
     ],
+    documents: {
+      insurance: { type: String }, // Path to file
+      rc: { type: String }, // Path to file
+      puc: { type: String }, // Path to file
+      drivingLicence: { type: String }, // Path to file
+    },
   },
   { timestamps: true }
 );
