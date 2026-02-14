@@ -49,20 +49,26 @@ app.use(
       // Allow requests with no origin (like Postman, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
 
+      // Normalize origin (remove trailing slash if present)
+      const normalizedOrigin = origin.replace(/\/$/, "");
+
       // Check if origin is allowed or if it's a local network IP (for mobile testing)
       if (
-        allowedOrigins.includes(origin) ||
-        origin.startsWith("http://192.168.") ||
-        origin.startsWith("http://10.") ||
-        origin.startsWith("http://localhost")
+        allowedOrigins.includes(normalizedOrigin) ||
+        normalizedOrigin.startsWith("http://192.168.") ||
+        normalizedOrigin.startsWith("http://10.") ||
+        normalizedOrigin.startsWith("http://localhost")
       ) {
-        callback(null, true);
-      } else {
-        console.warn(`CORS blocked origin: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, true);
       }
+
+      console.warn(`CORS blocked origin: ${origin}`);
+      return callback(null, false);
     },
-    credentials: true, // IMPORTANT for sessions/cookies
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
   })
 );
 
