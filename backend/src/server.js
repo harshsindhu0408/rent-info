@@ -103,16 +103,13 @@ app.get("/", (req, res) => {
 });
 
 // Use PORT from environment variable
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 
 // Only listen when not in Vercel serverless environment
-if (process.env.VERCEL !== "1") {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 
 // Export for Vercel serverless
 export default app;
