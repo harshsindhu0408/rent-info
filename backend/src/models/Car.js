@@ -89,6 +89,9 @@ const carSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        km: {
+          type: Number,
+        },
       },
     ],
     documents: {
@@ -97,6 +100,7 @@ const carSchema = new mongoose.Schema(
       puc: { type: String }, // Path to file
       drivingLicence: { type: String }, // Path to file
     },
+    images: [{ type: String }], // Array of image paths for the gallery
   },
   { timestamps: true }
 );

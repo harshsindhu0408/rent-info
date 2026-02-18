@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import { Plus, Edit2, Trash2, Search, Car as CarIcon, X, ChevronRight, Fuel, Users, Calendar, Activity } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Car as CarIcon, X, ChevronRight, Fuel, Users, Activity, Link } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 const Cars = () => {
   const navigate = useNavigate();
@@ -11,6 +12,10 @@ const Cars = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCar, setEditingCar] = useState(null);
+  const { user } = useAuth();
+  const userId = user?._id;
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
 
   const [formData, setFormData] = useState({
     brand: "",
@@ -50,13 +55,31 @@ const Cars = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Create FormData object
+    const data = new FormData();
+    Object.keys(formData).forEach(key => {
+      data.append(key, formData[key]);
+    });
+
+    // Append images
+    if (selectedFiles.length > 0) {
+      selectedFiles.forEach(file => {
+        data.append('images', file);
+      });
+    }
+
     try {
       if (editingCar) {
-        const res = await api.patch(`/api/cars/${editingCar._id}`, formData);
+        const res = await api.patch(`/api/cars/${editingCar._id}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         setCars(cars.map((c) => (c._id === editingCar._id ? res.data : c)));
         toast.success("Car updated successfully");
       } else {
-        const res = await api.post("/api/cars", formData);
+        const res = await api.post("/api/cars", data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         setCars([...cars, res.data]);
         toast.success("Car added successfully");
       }
@@ -64,6 +87,37 @@ const Cars = () => {
     } catch (error) {
       toast.error(error.response?.data?.msg || "Operation failed");
     }
+  };
+
+  const handleImageDelete = async (imagePath) => {
+    if (!confirm("Are you sure you want to delete this image?")) return;
+    try {
+      const res = await api.delete(`/api/cars/${editingCar._id}/images`, {
+        data: { imagePath }
+      });
+      // Update editingCar to reflect removed image
+      setEditingCar(res.data);
+      // Also update the car in the main list
+      setCars(cars.map((c) => (c._id === editingCar._id ? res.data : c)));
+      toast.success("Image deleted");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete image");
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+
+    // Generate previews
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviewUrls(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const openModal = (car = null) => {
@@ -96,6 +150,8 @@ const Cars = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCar(null);
+    setSelectedFiles([]);
+    setPreviewUrls([]);
   };
 
   const openDetails = (car) => {
@@ -133,13 +189,30 @@ const Cars = () => {
               {cars.length} vehicle{cars.length !== 1 ? "s" : ""} in your inventory
             </p>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center justify-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-black transition shadow-lg font-medium text-sm md:text-base w-full md:w-auto"
-          >
-            <Plus size={18} />
-            Add Vehicle
-          </button>
+          <div className="flex gap-3 w-full md:w-auto">
+            <button
+              onClick={() => {
+                if (userId) {
+                  const url = `${window.location.origin}/gallery/user/${userId}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success("Public fleet link copied!");
+                } else {
+                  toast.error("User ID not found, try re-logging in");
+                }
+              }}
+              className="flex items-center justify-center gap-2 bg-white text-gray-900 border border-gray-200 px-5 py-3 rounded-xl hover:bg-gray-50 transition shadow-sm font-medium text-sm md:text-base flex-1 md:flex-none"
+            >
+              <Link size={18} />
+              Share Fleet
+            </button>
+            <button
+              onClick={() => openModal()}
+              className="flex items-center justify-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-xl hover:bg-black transition shadow-lg font-medium text-sm md:text-base flex-1 md:flex-none"
+            >
+              <Plus size={18} />
+              Add Vehicle
+            </button>
+          </div>
         </div>
       </div>
 
@@ -320,7 +393,7 @@ const Cars = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 overflow-hidden bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="p-5 md:p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
@@ -427,10 +500,73 @@ const Cars = () => {
                 </div>
               </div>
 
+              {/* Image Upload Section */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Images</label>
+
+                {/* Existing Images */}
+                {editingCar && editingCar.images && editingCar.images.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-400 mb-2">Current Images</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {editingCar.images.map((img, idx) => (
+                        <div key={idx} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                          <img
+                            src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`}
+                            alt="Car"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleImageDelete(img)}
+                            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Input */}
+                <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-gray-400 transition text-center cursor-pointer">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <Plus size={24} />
+                    <span className="text-xs">Click to upload images</span>
+                  </div>
+                </div>
+
+                {/* Selected Previews */}
+                {previewUrls.length > 0 && (
+                  <div className="mt-4 grid grid-cols-4 gap-2">
+                    {previewUrls.map((url, idx) => (
+                      <div key={idx} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                        <img src={url} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedFile(idx)}
+                          className="absolute top-1 right-1 bg-gray-900 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="pt-4">
                 <button
                   type="submit"
-                  className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl hover:bg-black transition shadow-lg text-sm"
+                  className="w-full mb-10 bg-gray-900 text-white font-semibold py-3 rounded-xl hover:bg-black transition shadow-lg text-sm"
                 >
                   {editingCar ? "Update Vehicle" : "Add Vehicle"}
                 </button>

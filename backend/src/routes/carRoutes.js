@@ -9,6 +9,9 @@ import {
   deleteMaintenanceRecord,
   getCars,
   getCar,
+  getPublicCar,
+  getPublicCars,
+  deleteCarImage,
 } from "../controllers/carController.js";
 import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/uploadMiddleware.js";
@@ -18,6 +21,12 @@ const router = express.Router();
 // All routes require authentication
 // GET all cars - protected
 router.get("/", [ensureAuth, ensureAdmin], getCars);
+
+// GET all public cars for fleet gallery (by owner ID)
+router.get("/public/fleet/:userId", getPublicCars);
+
+// GET public car details - public access (MUST be before /:id)
+router.get("/public/:id", getPublicCar);
 
 // GET single car - protected
 router.get("/:id", [ensureAuth, ensureAdmin], getCar);
@@ -40,6 +49,13 @@ router.post(
       "Daily Rate is required and must be a number"
     ).isNumeric(),
   ],
+  upload.fields([
+    { name: "insurance", maxCount: 1 },
+    { name: "rc", maxCount: 1 },
+    { name: "puc", maxCount: 1 },
+    { name: "drivingLicence", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
   addCar
 );
 
@@ -54,6 +70,7 @@ router.patch(
       { name: "rc", maxCount: 1 },
       { name: "puc", maxCount: 1 },
       { name: "drivingLicence", maxCount: 1 },
+      { name: "images", maxCount: 10 },
     ]),
     check("hourlyRate", "Hourly Rate must be a number").optional().isNumeric(),
     check("dailyRate", "Daily Rate must be a number").optional().isNumeric(),
@@ -63,6 +80,9 @@ router.patch(
 
 // DELETE car - protected
 router.delete("/:id", [ensureAuth, ensureAdmin], deleteCar);
+
+// DELETE car image - protected
+router.delete("/:id/images", [ensureAuth, ensureAdmin], deleteCarImage);
 
 // POST maintenance record - protected
 router.post(

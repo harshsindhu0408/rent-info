@@ -15,6 +15,8 @@ import CarDetail from "./pages/CarDetail";
 import Rentals from "./pages/Rentals";
 import RentalDetail from "./pages/RentalDetail";
 import Reports from "./pages/Reports";
+import PublicCarGallery from "./pages/PublicCarGallery";
+import PublicFleetGallery from "./pages/PublicFleetGallery";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -25,6 +27,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/gallery/user/:userId" element={<PublicFleetGallery />} />
+          <Route path="/gallery/:id" element={<PublicCarGallery />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
