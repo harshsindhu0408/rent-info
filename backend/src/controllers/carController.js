@@ -2,6 +2,20 @@ import Car from "../models/Car.js";
 import { validationResult } from "express-validator";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Convert an absolute file path to a URL-relative path (e.g. "uploads/documents/foo.jpg")
+// This is what gets stored in the DB and used to build public URLs.
+const toRelativePath = (absolutePath) => {
+  // Normalise separators to forward-slash
+  const normalised = absolutePath.replace(/\\/g, "/");
+  // Find the "uploads/" segment and return everything from there
+  const idx = normalised.indexOf("uploads/");
+  return idx !== -1 ? normalised.slice(idx) : normalised;
+};
 
 // @desc    Get all cars for the logged-in user
 // @route   GET /api/cars
@@ -68,13 +82,13 @@ export const addCar = async (req, res) => {
     };
 
     if (req.files) {
-      if (req.files.insurance) carData.documents.insurance = req.files.insurance[0].path.replace(/\\/g, "/");
-      if (req.files.rc) carData.documents.rc = req.files.rc[0].path.replace(/\\/g, "/");
-      if (req.files.puc) carData.documents.puc = req.files.puc[0].path.replace(/\\/g, "/");
-      if (req.files.drivingLicence) carData.documents.drivingLicence = req.files.drivingLicence[0].path.replace(/\\/g, "/");
+      if (req.files.insurance) carData.documents.insurance = toRelativePath(req.files.insurance[0].path);
+      if (req.files.rc) carData.documents.rc = toRelativePath(req.files.rc[0].path);
+      if (req.files.puc) carData.documents.puc = toRelativePath(req.files.puc[0].path);
+      if (req.files.drivingLicence) carData.documents.drivingLicence = toRelativePath(req.files.drivingLicence[0].path);
 
       if (req.files.images) {
-        carData.images = req.files.images.map(file => file.path.replace(/\\/g, "/"));
+        carData.images = req.files.images.map(file => toRelativePath(file.path));
       }
     }
 
@@ -138,16 +152,16 @@ export const updateCar = async (req, res) => {
   // Handle file uploads
   if (req.files) {
     if (req.files.insurance) {
-      carFields["documents.insurance"] = req.files.insurance[0].path.replace(/\\/g, "/");
+      carFields["documents.insurance"] = toRelativePath(req.files.insurance[0].path);
     }
     if (req.files.rc) {
-      carFields["documents.rc"] = req.files.rc[0].path.replace(/\\/g, "/");
+      carFields["documents.rc"] = toRelativePath(req.files.rc[0].path);
     }
     if (req.files.puc) {
-      carFields["documents.puc"] = req.files.puc[0].path.replace(/\\/g, "/");
+      carFields["documents.puc"] = toRelativePath(req.files.puc[0].path);
     }
     if (req.files.drivingLicence) {
-      carFields["documents.drivingLicence"] = req.files.drivingLicence[0].path.replace(/\\/g, "/");
+      carFields["documents.drivingLicence"] = toRelativePath(req.files.drivingLicence[0].path);
     }
     if (req.files.images) {
       // Append new images to the list
@@ -171,7 +185,7 @@ export const updateCar = async (req, res) => {
     );
 
     if (req.files && req.files.images) {
-      const newImages = req.files.images.map((file) => file.path.replace(/\\/g, "/"));
+      const newImages = req.files.images.map((file) => toRelativePath(file.path));
       car.images.push(...newImages);
       await car.save();
     }

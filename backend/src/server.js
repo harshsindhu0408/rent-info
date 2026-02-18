@@ -94,8 +94,8 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Assuming uploads is in the root backend directory, which is one level up from src
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Serve from src/uploads — same absolute location where uploadMiddleware stores files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Health check endpoint
 app.get("/", (req, res) => {
