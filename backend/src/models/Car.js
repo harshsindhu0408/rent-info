@@ -72,6 +72,9 @@ const carSchema = new mongoose.Schema(
     lastServicedAt: {
       type: Date,
     },
+    lastServicedKm: {
+      type: Number,
+    },
     maintenanceHistory: [
       {
         description: {

@@ -42,7 +42,7 @@ export const addCar = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { brand, model, plateNumber, hourlyRate, dailyRate, status } = req.body;
+  const { brand, model, plateNumber, hourlyRate, dailyRate, status, lastServicedKm } = req.body;
 
   try {
     let car = await Car.findOne({ plateNumber });
@@ -59,6 +59,7 @@ export const addCar = async (req, res) => {
       hourlyRate,
       dailyRate,
       status,
+      lastServicedKm,
       user: req.user._id, // Assign to logged-in user
     });
 
@@ -79,6 +80,7 @@ export const updateCar = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  const { brand, model, plateNumber, hourlyRate, dailyRate, status, color, year, fuelType, transmission, seatingCapacity, insuranceExpiry, pucExpiry, notes, lastServicedKm } = req.body;
   const {
     brand,
     model,
@@ -114,6 +116,7 @@ export const updateCar = async (req, res) => {
     carFields.insuranceExpiry = insuranceExpiry;
   if (pucExpiry !== undefined) carFields.pucExpiry = pucExpiry;
   if (notes !== undefined) carFields.notes = notes;
+  if (lastServicedKm !== undefined) carFields.lastServicedKm = lastServicedKm;
 
   // Handle file uploads
   if (req.files) {

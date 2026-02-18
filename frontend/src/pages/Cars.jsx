@@ -19,6 +19,7 @@ const Cars = () => {
     hourlyRate: "",
     dailyRate: "",
     status: "Available",
+    lastServicedKm: "",
   });
 
   useEffect(() => {
@@ -75,6 +76,7 @@ const Cars = () => {
         hourlyRate: car.hourlyRate,
         dailyRate: car.dailyRate,
         status: car.status,
+        lastServicedKm: car.lastServicedKm || "",
       });
     } else {
       setEditingCar(null);
@@ -85,6 +87,7 @@ const Cars = () => {
         hourlyRate: "",
         dailyRate: "",
         status: "Available",
+        lastServicedKm: "",
       });
     }
     setIsModalOpen(true);
@@ -202,8 +205,8 @@ const Cars = () => {
                 {/* Card Header with Color Accent */}
                 <div className="relative h-3 bg-gradient-to-r from-gray-800 to-gray-900">
                   <div className={`absolute right-4 -bottom-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-lg ${car.status === "Available" ? "bg-emerald-500 text-white" :
-                      car.status === "Rented" ? "bg-amber-500 text-white" :
-                        "bg-gray-500 text-white"
+                    car.status === "Rented" ? "bg-amber-500 text-white" :
+                      "bg-gray-500 text-white"
                     }`}>
                     {car.status}
                   </div>
@@ -399,17 +402,29 @@ const Cars = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Status</label>
-                <select
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-300 focus:bg-white outline-none transition text-sm"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="Available">Available</option>
-                  <option value="Rented">Rented</option>
-                  <option value="Maintenance">Maintenance</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Last Serviced Km</label>
+                  <input
+                    type="number"
+                    placeholder="e.g., 5000"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-300 focus:bg-white outline-none transition text-sm"
+                    value={formData.lastServicedKm}
+                    onChange={(e) => setFormData({ ...formData, lastServicedKm: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Status</label>
+                  <select
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-300 focus:bg-white outline-none transition text-sm"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Rented">Rented</option>
+                    <option value="Maintenance">Maintenance</option>
+                  </select>
+                </div>
               </div>
 
               <div className="pt-4">
