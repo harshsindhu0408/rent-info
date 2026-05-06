@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-// import passport from "./config/passport.js"; // Removed
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -72,7 +71,15 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Handle Vercel body parsing quirk where req.body might already be parsed
+app.use((req, res, next) => {
+  if (req.body && Object.keys(req.body).length > 0) {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie parser
 
 // Only use morgan in development
@@ -80,7 +87,6 @@ if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
-// Session and Passport removed
 
 // Routes
 app.use("/auth", authRoutes);

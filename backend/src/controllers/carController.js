@@ -7,12 +7,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Convert an absolute file path to a URL-relative path (e.g. "uploads/documents/foo.jpg")
-// This is what gets stored in the DB and used to build public URLs.
 const toRelativePath = (absolutePath) => {
-  // Normalise separators to forward-slash
   const normalised = absolutePath.replace(/\\/g, "/");
-  // Find the "uploads/" segment and return everything from there
   const idx = normalised.indexOf("uploads/");
   return idx !== -1 ? normalised.slice(idx) : normalised;
 };
