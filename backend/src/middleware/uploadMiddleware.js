@@ -30,17 +30,18 @@ const storage = multer.diskStorage({
 
 // File filter (accept images and PDFs)
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|pdf/;
+  const allowedTypes = /jpeg|jpg|png|pdf|heic|heif/;
   const extname = allowedTypes.test(
     path.extname(file.originalname).toLowerCase()
   );
-  const mimetype = allowedTypes.test(file.mimetype);
+  // HEIC files sometimes upload as application/octet-stream or image/heic
+  const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/octet-stream';
 
   if (extname && mimetype) {
     cb(null, true);
   } else {
     cb(
-      new Error("Invalid file type. Only JPEG, JPG, PNG and PDF are allowed!"),
+      new Error("Invalid file type. Only JPEG, JPG, PNG, HEIC and PDF are allowed!"),
       false
     );
   }
