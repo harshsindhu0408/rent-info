@@ -8,6 +8,8 @@ import {
   ChevronRight
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { MediaThumb } from "../components/common";
+import { filterOversizeFiles, uploadProgressConfig } from "../utils/upload";
 
 const CarDetail = () => {
   const { id } = useParams();
@@ -44,6 +46,7 @@ const CarDetail = () => {
 
   const handleSave = async () => {
     setSaving(true);
+    const toastId = "car-upload";
     try {
       const formData = new FormData();
       Object.keys(editForm).forEach((key) => {
@@ -60,30 +63,32 @@ const CarDetail = () => {
       if (files.images && files.images.length > 0) {
         files.images.forEach(file => formData.append("images", file));
       }
-      const res = await api.patch(`/api/cars/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.patch(`/api/cars/${id}`, formData, uploadProgressConfig(toastId));
       setCar(res.data);
       setEditForm(res.data);
       setFiles({});
       setIsEditing(false);
-      toast.success("Vehicle updated successfully!");
+      toast.success("Vehicle updated successfully!", { id: toastId });
     } catch (error) {
-      toast.error(error.response?.data?.msg || "Failed to update vehicle");
+      toast.error(error.response?.data?.msg || "Failed to update vehicle", { id: toastId });
     } finally {
       setSaving(false);
     }
   };
 
   const handleFileChange = (e, type) => {
-    if (e.target.files && e.target.files[0]) {
-      setFiles((prev) => ({ ...prev, [type]: e.target.files[0] }));
+    const [file] = filterOversizeFiles(e.target.files || []);
+    if (file) {
+      setFiles((prev) => ({ ...prev, [type]: file }));
+    } else {
+      e.target.value = "";
     }
   };
 
   const handleImageUpload = (e) => {
     if (e.target.files) {
-      const newImages = Array.from(e.target.files);
+      const newImages = filterOversizeFiles(e.target.files);
+      e.target.value = "";
       setFiles((prev) => ({
         ...prev,
         images: prev.images ? [...prev.images, ...newImages] : newImages
@@ -252,7 +257,7 @@ const CarDetail = () => {
       </div>
       {isEditing && (
         <div className="mt-3 relative">
-           <input type="file" accept="image/*,.heic,.heif,application/pdf"
+           <input type="file"
             className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gray-900 file:text-white hover:file:bg-gray-800 cursor-pointer"
             onChange={(e) => handleFileChange(e, docKey)}
           />
@@ -466,8 +471,10 @@ const CarDetail = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {car.images?.map((img, idx) => (
                 <div key={idx} className="relative group aspect-square bg-gray-100 rounded-2xl overflow-hidden border border-gray-100">
-                  <img src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`}
-                    alt={`Car ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <a href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`} target="_blank" rel="noopener noreferrer">
+                    <MediaThumb src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`}
+                      alt={`Car ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  </a>
                   {isEditing && (
                     <button onClick={() => handleImageDelete(img)}
                       className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:bg-rose-600 hover:scale-105">
@@ -478,7 +485,7 @@ const CarDetail = () => {
               ))}
               {isEditing && files.images?.map((file, idx) => (
                 <div key={`new-${idx}`} className="relative group aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-indigo-200">
-                  <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover opacity-80" />
+                  <MediaThumb src={URL.createObjectURL(file)} name={file.name} type={file.type} alt="Preview" className="w-full h-full object-cover opacity-80" />
                   <button onClick={() => removeSelectedImage(idx)}
                     className="absolute top-2 right-2 p-1.5 bg-gray-900 text-white rounded-full hover:bg-black transition-all shadow-lg hover:scale-105">
                     <X size={12} />
@@ -492,7 +499,7 @@ const CarDetail = () => {
                     <Camera size={18} className="text-gray-400 group-hover:text-indigo-500 transition-colors" />
                   </div>
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-indigo-600">Add Photos</span>
-                  <input type="file" multiple accept="image/*,.heic,.heif" className="hidden" onChange={handleImageUpload} />
+                  <input type="file" multiple className="hidden" onChange={handleImageUpload} />
                 </label>
               )}
               {(!car.images || car.images.length === 0) && !isEditing && (

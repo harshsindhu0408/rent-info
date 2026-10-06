@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { convertUploads } from "../utils/imageConvert.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,27 +29,35 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter (accept images and PDFs)
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|pdf|heic|heif/;
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-  // HEIC files sometimes upload as application/octet-stream or image/heic
-  const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/octet-stream';
+export const MAX_FILE_SIZE_MB = 100;
 
-  if (extname && mimetype) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Invalid file type. Only JPEG, JPG, PNG, HEIC and PDF are allowed!"),
-      false
-    );
-  }
+// Every file type is accepted (images, HEIC, camera RAW, PDFs, docs, videos...).
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: MAX_FILE_SIZE_MB * 1024 * 1024 },
+});
+
+// Wraps multer so its errors come back as JSON the frontend can show.
+const handleUpload = (multerMiddleware) => (req, res, next) => {
+  multerMiddleware(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(413)
+          .json({ msg: `File too large. Maximum size is ${MAX_FILE_SIZE_MB} MB per file.` });
+      }
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        return res.status(400).json({ msg: `Too many files for "${err.field}".` });
+      }
+      return res.status(400).json({ msg: err.message });
+    }
+    console.error("Upload error:", err);
+    return res.status(500).json({ msg: "File upload failed" });
+  });
 };
 
-export const upload = multer({
-  storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-  fileFilter: fileFilter,
-});
+export const uploadFields = (fields) => [
+  handleUpload(upload.fields(fields)),
+  convertUploads,
+];

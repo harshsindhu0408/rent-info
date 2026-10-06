@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { MediaThumb } from "../components/common";
 import api from "../api/axios";
 import { ChevronLeft, Share2, Maximize2, X, Download, Car } from "lucide-react";
 
@@ -96,7 +97,7 @@ const PublicCarGallery = () => {
                                 className="relative group overflow-hidden rounded-xl bg-gray-900 break-inside-avoid cursor-zoom-in"
                                 onClick={() => setSelectedImage(img)}
                             >
-                                <img
+                                <MediaThumb
                                     src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`}
                                     alt={`${car.model} - ${index + 1}`}
                                     className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
@@ -124,9 +125,10 @@ const PublicCarGallery = () => {
                         <X size={24} />
                     </button>
 
-                    <img
+                    <MediaThumb
                         src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${selectedImage}`}
                         alt="Full view"
+                        controls
                         className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
                     />
                 </div>

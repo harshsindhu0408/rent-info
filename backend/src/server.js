@@ -112,9 +112,12 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 8080;
 
 // Only listen when not in Vercel serverless environment
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// Allow large (up to 100MB) uploads over slow connections
+server.requestTimeout = 30 * 60 * 1000;
+server.timeout = 30 * 60 * 1000;
 
 
 // Export for Vercel serverless

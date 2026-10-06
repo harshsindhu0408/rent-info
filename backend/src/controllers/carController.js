@@ -13,6 +13,17 @@ const toRelativePath = (absolutePath) => {
   return idx !== -1 ? normalised.slice(idx) : normalised;
 };
 
+// Stored paths look like "uploads/documents/x.jpg", relative to src/
+const removeFile = (relativePath, label = "file") => {
+  if (!relativePath) return;
+  const absolutePath = path.isAbsolute(relativePath)
+    ? relativePath
+    : path.join(__dirname, "..", relativePath);
+  fs.unlink(absolutePath, (err) => {
+    if (err && err.code !== "ENOENT") console.error(`Failed to delete ${label}: ${relativePath}`, err);
+  });
+};
+
 // @desc    Get all cars for the logged-in user
 // @route   GET /api/cars
 // @access  Private
@@ -174,6 +185,11 @@ export const updateCar = async (req, res) => {
     let car = await Car.findOne({ _id: req.params.id, user: req.user._id });
     if (!car) return res.status(404).json({ msg: "Car not found" });
 
+    // Remove old document files that are being replaced
+    ["insurance", "rc", "puc", "drivingLicence"].forEach((key) => {
+      if (req.files?.[key] && car.documents?.[key]) removeFile(car.documents[key], "document");
+    });
+
     car = await Car.findByIdAndUpdate(
       req.params.id,
       { $set: carFields },
@@ -207,22 +223,14 @@ export const deleteCar = async (req, res) => {
 
     // Delete associated images
     if (car.images && car.images.length > 0) {
-      car.images.forEach((imagePath) => {
-        fs.unlink(imagePath, (err) => {
-          if (err) console.error(`Failed to delete image: ${imagePath}`, err);
-        });
-      });
+      car.images.forEach((imagePath) => removeFile(imagePath, "image"));
     }
 
     // Delete associated documents
     if (car.documents) {
-      Object.values(car.documents).forEach((docPath) => {
-        if (docPath) {
-          fs.unlink(docPath, (err) => {
-            if (err) console.error(`Failed to delete document: ${docPath}`, err);
-          });
-        }
-      });
+      ["insurance", "rc", "puc", "drivingLicence"].forEach((key) =>
+        removeFile(car.documents[key], "document")
+      );
     }
 
     await Car.deleteOne({ _id: req.params.id });
@@ -260,12 +268,8 @@ export const deleteCarImage = async (req, res) => {
     await car.save();
 
     // Delete from filesystem
-    fs.unlink(imagePath, (err) => {
-      if (err) {
-        console.error(`Failed to delete image file: ${imagePath}`, err);
-        // We still return success as it's removed from DB, but log error
-      }
-    });
+    // Still return success if this fails, as it's removed from DB
+    removeFile(imagePath, "image");
 
     res.json(car);
   } catch (err) {

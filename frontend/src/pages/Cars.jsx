@@ -4,6 +4,8 @@ import api from "../api/axios";
 import { Plus, Edit2, Trash2, Search, Car as CarIcon, X, ChevronRight, Fuel, Users, Activity, Link, Image as ImageIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import { MediaThumb } from "../components/common";
+import { filterOversizeFiles, uploadProgressConfig } from "../utils/upload";
 
 const Cars = () => {
   const navigate = useNavigate();
@@ -67,23 +69,20 @@ const Cars = () => {
       });
     }
 
+    const toastId = "car-upload";
     try {
       if (editingCar) {
-        const res = await api.patch(`/api/cars/${editingCar._id}`, data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await api.patch(`/api/cars/${editingCar._id}`, data, uploadProgressConfig(toastId));
         setCars(cars.map((c) => (c._id === editingCar._id ? res.data : c)));
-        toast.success("Car updated successfully");
+        toast.success("Car updated successfully", { id: toastId });
       } else {
-        const res = await api.post("/api/cars", data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await api.post("/api/cars", data, uploadProgressConfig(toastId));
         setCars([...cars, res.data]);
-        toast.success("Car added successfully");
+        toast.success("Car added successfully", { id: toastId });
       }
       closeModal();
     } catch (error) {
-      toast.error(error.response?.data?.msg || "Operation failed");
+      toast.error(error.response?.data?.msg || "Operation failed", { id: toastId });
     }
   };
 
@@ -103,7 +102,8 @@ const Cars = () => {
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
+    const files = filterOversizeFiles(e.target.files);
+    e.target.value = "";
     setSelectedFiles(prev => [...prev, ...files]);
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setPreviewUrls(prev => [...prev, ...newPreviews]);
@@ -260,7 +260,7 @@ const Cars = () => {
               {/* Image / Header area */}
               <div className="relative h-40 bg-gray-100 overflow-hidden">
                 {car.images && car.images.length > 0 ? (
-                  <img
+                  <MediaThumb
                     src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${car.images[0]}`}
                     alt={`${car.brand} ${car.model}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -471,7 +471,7 @@ const Cars = () => {
                       <div className="grid grid-cols-4 gap-3">
                         {editingCar.images.map((img, idx) => (
                           <div key={idx} className="relative group aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                            <img src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`} alt="Car" className="w-full h-full object-cover" />
+                            <MediaThumb src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${img}`} alt="Car" className="w-full h-full object-cover" />
                             <button type="button" onClick={() => handleImageDelete(img)} className="absolute top-1.5 right-1.5 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow-lg hover:bg-rose-600">
                               <X size={12} />
                             </button>
@@ -482,7 +482,7 @@ const Cars = () => {
                   )}
 
                   <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors text-center cursor-pointer group">
-                    <input type="file" multiple accept="image/*,.heic,.heif" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                     <div className="flex flex-col items-center gap-2 text-gray-400 group-hover:text-indigo-500">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                         <ImageIcon size={18} />
@@ -495,7 +495,7 @@ const Cars = () => {
                     <div className="mt-4 grid grid-cols-4 gap-3">
                       {previewUrls.map((url, idx) => (
                         <div key={idx} className="relative group aspect-square bg-gray-50 rounded-xl overflow-hidden border-2 border-indigo-200">
-                          <img src={url} alt="Preview" className="w-full h-full object-cover opacity-80" />
+                          <MediaThumb src={url} name={selectedFiles[idx]?.name} type={selectedFiles[idx]?.type} alt="Preview" className="w-full h-full object-cover opacity-80" />
                           <button type="button" onClick={() => removeSelectedFile(idx)} className="absolute top-1.5 right-1.5 bg-gray-900 text-white p-1.5 rounded-full hover:bg-black transition shadow-lg">
                             <X size={12} />
                           </button>

@@ -14,9 +14,17 @@ import {
   deleteCarImage,
 } from "../controllers/carController.js";
 import { ensureAuth, ensureAdmin } from "../middleware/authMiddleware.js";
-import { upload } from "../middleware/uploadMiddleware.js";
+import { uploadFields } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
+
+const carUploadFields = [
+  { name: "insurance", maxCount: 1 },
+  { name: "rc", maxCount: 1 },
+  { name: "puc", maxCount: 1 },
+  { name: "drivingLicence", maxCount: 1 },
+  { name: "images", maxCount: 30 },
+];
 
 // All routes require authentication
 // GET all cars - protected
@@ -37,13 +45,7 @@ router.post(
   [
     ensureAuth,
     ensureAdmin,
-    upload.fields([
-      { name: "insurance", maxCount: 1 },
-      { name: "rc", maxCount: 1 },
-      { name: "puc", maxCount: 1 },
-      { name: "drivingLicence", maxCount: 1 },
-      { name: "images", maxCount: 10 },
-    ]),
+    uploadFields(carUploadFields),
     check("brand", "Brand is required").not().isEmpty(),
     check("model", "Model is required").not().isEmpty(),
     check("plateNumber", "Plate Number is required").not().isEmpty(),
@@ -65,13 +67,7 @@ router.patch(
   [
     ensureAuth,
     ensureAdmin,
-    upload.fields([
-      { name: "insurance", maxCount: 1 },
-      { name: "rc", maxCount: 1 },
-      { name: "puc", maxCount: 1 },
-      { name: "drivingLicence", maxCount: 1 },
-      { name: "images", maxCount: 10 },
-    ]),
+    uploadFields(carUploadFields),
     check("hourlyRate", "Hourly Rate must be a number").optional().isNumeric(),
     check("dailyRate", "Daily Rate must be a number").optional().isNumeric(),
   ],

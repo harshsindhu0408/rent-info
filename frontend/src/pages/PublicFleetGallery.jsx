@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { MediaThumb } from "../components/common";
 import api from "../api/axios";
 import { Car, Fuel, Users, Settings, ArrowRight, Phone, Mail } from "lucide-react";
 
@@ -75,7 +76,7 @@ const PublicFleetGallery = () => {
                                 {/* Image Aspect Ratio Container */}
                                 <div className="aspect-[16/10] bg-gray-100 relative overflow-hidden">
                                     {car.images && car.images.length > 0 ? (
-                                        <img
+                                        <MediaThumb
                                             src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/${car.images[0]}`}
                                             alt={`${car.brand} ${car.model}`}
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
